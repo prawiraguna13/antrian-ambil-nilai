@@ -1271,7 +1271,7 @@
         appState.credentials = { username: newU, passwordHash: hashed };
         document.getElementById('guruCurrentUsernameLabel').textContent = newU;
         closeAccountModal();
-        showToast('Kredensial akun guru berhasil disimpan ke Firebase!', 'success');
+        showToast('Kredensial akun guru berhasil disimpan!', 'success');
       } catch (err) {
         showToast('Gagal memperbarui akun: ' + err.message, 'error');
       }
@@ -1364,7 +1364,7 @@
       try {
         await db.collection('classes').add({ name: val, createdAt: Date.now() });
         document.getElementById('inputNewKelas').value = '';
-        showToast(`Kelas '${val}' berhasil ditambahkan ke Firebase!`, 'success');
+        showToast(`Kelas '${val}' berhasil ditambahkan!`, 'success');
       } catch (err) {
         showToast('Gagal menambahkan kelas: ' + err.message, 'error');
       }
@@ -1395,7 +1395,7 @@
       try {
         await db.collection('topics').add({ title: val, createdAt: Date.now() });
         document.getElementById('inputNewMateri').value = '';
-        showToast(`Materi '${val}' berhasil ditambahkan ke Firebase!`, 'success');
+        showToast(`Materi '${val}' berhasil ditambahkan!`, 'success');
       } catch (err) {
         showToast('Gagal menambahkan materi: ' + err.message, 'error');
       }
@@ -1447,15 +1447,15 @@
 
     function openClearKelasModal() {
       openConfirmModal(
-        'Clear Semua Kelas di Firebase?',
-        'Tindakan ini akan mengosongkan seluruh daftar kelas di database Firebase. Pilihan di formulir pendaftaran siswa juga akan hilang.',
+        'Clear Semua Kelas?',
+        'Tindakan ini akan mengosongkan seluruh daftar kelas di database. Pilihan di formulir pendaftaran siswa juga akan hilang.',
         async () => {
           try {
             const snapshot = await db.collection('classes').get();
             const batch = db.batch();
             snapshot.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
-            showToast('Semua kelas berhasil dihapus dari Firebase!', 'info');
+            showToast('Semua kelas berhasil dihapus!', 'info');
           } catch (e) {
             showToast('Gagal clear kelas: ' + e.message, 'error');
           }
@@ -1465,15 +1465,15 @@
 
     function openClearMateriModal() {
       openConfirmModal(
-        'Clear Semua Materi di Firebase?',
-        'Tindakan ini akan mengosongkan seluruh daftar materi praktik di database Firebase. Pilihan di formulir pendaftaran siswa juga akan hilang.',
+        'Clear Semua Materi?',
+        'Tindakan ini akan mengosongkan seluruh daftar materi praktik di database. Pilihan di formulir pendaftaran siswa juga akan hilang.',
         async () => {
           try {
             const snapshot = await db.collection('topics').get();
             const batch = db.batch();
             snapshot.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
-            showToast('Semua materi berhasil dihapus dari Firebase!', 'info');
+            showToast('Semua materi berhasil dihapus!', 'info');
           } catch (e) {
             showToast('Gagal clear materi: ' + e.message, 'error');
           }
@@ -1483,8 +1483,8 @@
 
     function openClearAntrianModal() {
       openConfirmModal(
-        'Clear Seluruh Antrian di Firebase?',
-        'Tindakan ini akan mereset antrian menunggu dan siswa yang sedang aktif di Firebase. Riwayat nilai siswa yang sudah selesai tetap tersimpan.',
+        'Clear Seluruh Antrian?',
+        'Tindakan ini akan mereset antrian menunggu dan siswa yang sedang aktif. Riwayat nilai siswa yang sudah selesai tetap tersimpan.',
         async () => {
           try {
             const snapshot = await db.collection('students')
@@ -1493,7 +1493,7 @@
             const batch = db.batch();
             snapshot.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
-            showToast('Antrian aktif berhasil dibersihkan dari Firebase!', 'info');
+            showToast('Antrian aktif berhasil dibersihkan!', 'info');
           } catch (e) {
             showToast('Gagal membersihkan antrian: ' + e.message, 'error');
           }
@@ -1507,8 +1507,8 @@
         return;
       }
       openConfirmModal(
-        'Clear Semua Rekap Nilai di Firebase?',
-        'Tindakan ini akan menghapus permanen seluruh riwayat nilai siswa yang sudah selesai di database Firebase. Data yang dihapus tidak dapat dipulihkan.',
+        'Clear Semua Rekap Nilai?',
+        'Tindakan ini akan menghapus permanen seluruh riwayat nilai siswa yang sudah selesai di database. Data yang dihapus tidak dapat dipulihkan.',
         async () => {
           try {
             const snapshot = await db.collection('students')
@@ -1517,7 +1517,7 @@
             const batch = db.batch();
             snapshot.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
-            showToast('Semua riwayat rekap nilai berhasil dibersihkan dari Firebase!', 'info');
+            showToast('Semua riwayat rekap nilai berhasil dibersihkan!', 'info');
           } catch (e) {
             showToast('Gagal membersihkan rekap nilai: ' + e.message, 'error');
           }
@@ -1599,7 +1599,7 @@
         showToast(`Nomor antrian ${newStudent.code} berhasil disimpan!`, 'success');
       } catch (err) {
         console.error('Register error:', err);
-        showToast('Gagal mendaftar ke Firebase: ' + (err.message || err), 'error');
+        showToast('Gagal mendaftar: ' + (err.message || err), 'error');
       } finally {
         submitBtn.disabled = false;
       }
@@ -1873,10 +1873,10 @@
     }
 
     async function deleteHistoryItem(id) {
-      if (confirm('Hapus baris rekap nilai ini dari Firebase?')) {
+      if (confirm('Hapus baris rekap nilai ini?')) {
         try {
           await db.collection('students').doc(id).delete();
-          showToast('Data riwayat nilai dihapus dari Firebase!', 'info');
+          showToast('Data riwayat nilai berhasil dihapus!', 'info');
         } catch (err) {
           showToast('Gagal menghapus riwayat: ' + err.message, 'error');
         }
@@ -2001,7 +2001,7 @@
             <td class="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">${escapeHtml(row.catatan || '-')}</td>
             <td class="py-3 px-4 font-mono text-xs text-slate-500">${row.completedAt || '-'}</td>
             <td class="py-3 px-4 text-right">
-              <button onclick="deleteHistoryItem('${row.id}')" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Hapus dari Firebase">
+              <button onclick="deleteHistoryItem('${row.id}')" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Hapus riwayat nilai">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
               </button>
             </td>
