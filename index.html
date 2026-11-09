@@ -32,6 +32,10 @@
   <!-- Lucide Icons via CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <!-- Firebase App & Firestore SDKs (v10 compat via CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
   <style>
     /* Base Body & Themes */
     body {
@@ -960,28 +964,31 @@
     <!-- Toasts injected dynamically with animate-toast -->
   </div>
 
-  <!-- JAVASCRIPT: LOGIKA SPA, REAL-TIME SQLITE DATABASE SYNC, & WEB SPEECH -->
+  <!-- JAVASCRIPT: LOGIKA SPA, REAL-TIME FIREBASE CLOUD FIRESTORE, & WEB SPEECH -->
   <script>
     // ==========================================
-    // 1. STATE MANAGEMENT (SQLITE DATABASE AS SOURCE OF TRUTH)
+    // 1. FIREBASE CONFIGURATION & INITIALIZATION
     // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWll3vQgz-mP_n4xL0kIQxZ5MlxoLR4qk",
+      authDomain: "antrian-ambil-nilai.firebaseapp.com",
+      projectId: "antrian-ambil-nilai",
+      storageBucket: "antrian-ambil-nilai.firebasestorage.app",
+      messagingSenderId: "571324764374",
+      appId: "1:571324764374:web:db4b66cdafe882f77cb977",
+      measurementId: "G-BWCWJHKEY0"
+    };
+
+    const fbApp = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const STORAGE_KEYS = {
       AUTH_USER: 'antrian_admin_auth',
-      AUTH_TOKEN: 'antrian_admin_token',
       THEME: 'antrian_theme_mode'
     };
 
-    function authFetch(url, options = {}) {
-      const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || '';
-      const headers = { ...(options.headers || {}) };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      return fetch(url, { ...options, headers });
-    }
-
     let appState = {
-      credentials: { username: 'kien' },
+      credentials: { username: 'kien', passwordHash: '' },
       classes: [],
       topics: [],
       queue: [],
@@ -990,8 +997,19 @@
       isLoggedIn: sessionStorage.getItem(STORAGE_KEYS.AUTH_USER) === 'true',
       currentTab: 'tab-siswa',
       lastCallTimestamp: 0,
-      isInitialLoaded: false
+      isInitialLoaded: false,
+      classesSeeded: false,
+      topicsSeeded: false
     };
+
+    // Helper: SHA-256 Web Crypto API
+    async function hashPassword(str) {
+      const buffer = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest('SHA-256', buffer);
+      return Array.from(new Uint8Array(digest))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
 
     // ==========================================
     // 2. THEME ENGINE (Dark / Light Mode)
@@ -1069,42 +1087,119 @@
     }
 
     // ==========================================
-    // 4. DATABASE REAL-TIME SYNCHRONIZATION
+    // 4. FIREBASE REAL-TIME LISTENERS & AUTO-SEED
     // ==========================================
-    async function syncDatabase() {
-      try {
-        const res = await fetch('/api/bootstrap');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data.success) return;
-
-        appState.classes = data.classes || [];
-        appState.topics = data.topics || [];
-        appState.queue = data.queue || [];
-        appState.currentStudent = data.current_student || null;
-        appState.history = data.history || [];
-        if (data.admin && data.admin.username) {
-          appState.credentials.username = data.admin.username;
-          const userLabel = document.getElementById('guruCurrentUsernameLabel');
-          if (userLabel) userLabel.textContent = data.admin.username;
+    function initFirebaseRealtime() {
+      // 1. Listen to Classes
+      db.collection('classes').orderBy('name').onSnapshot(snapshot => {
+        if (snapshot.empty && !appState.classesSeeded) {
+          appState.classesSeeded = true;
+          seedDefaultClasses();
+        } else {
+          appState.classes = snapshot.docs.map(d => d.data().name);
+          renderClassAndTopicOptions();
         }
+      }, err => {
+        console.warn('Classes listener err:', err);
+      });
 
-        // Check for cross-device sound call event
-        if (data.last_call_event && data.last_call_event.call_timestamp) {
-          const ts = data.last_call_event.call_timestamp;
-          if (appState.lastCallTimestamp === 0) {
-            appState.lastCallTimestamp = ts;
-          } else if (ts > appState.lastCallTimestamp) {
-            appState.lastCallTimestamp = ts;
-            // Trigger TTS speech on any listening display
-            announceStudentVoice(data.last_call_event.code, data.last_call_event.nama);
-          }
+      // 2. Listen to Topics
+      db.collection('topics').orderBy('title').onSnapshot(snapshot => {
+        if (snapshot.empty && !appState.topicsSeeded) {
+          appState.topicsSeeded = true;
+          seedDefaultTopics();
+        } else {
+          appState.topics = snapshot.docs.map(d => d.data().title);
+          renderClassAndTopicOptions();
         }
+      }, err => {
+        console.warn('Topics listener err:', err);
+      });
 
+      // 3. Listen to Students (Queue + Active + Graded History)
+      db.collection('students').orderBy('num', 'asc').onSnapshot(snapshot => {
+        const students = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        appState.queue = students.filter(s => s.status === 'waiting');
+        appState.currentStudent = students.find(s => s.status === 'in_progress') || null;
+        appState.history = students
+          .filter(s => s.status === 'completed' || s.status === 'skipped')
+          .sort((a, b) => (b.completedTimestamp || 0) - (a.completedTimestamp || 0));
+        
         renderAllViews();
         appState.isInitialLoaded = true;
-      } catch (err) {
-        console.warn('Sync with database error:', err);
+      }, err => {
+        console.warn('Students listener err:', err);
+      });
+
+      // 4. Listen to Voice Call Events (Cross-device TTS)
+      db.collection('system').doc('call_event').onSnapshot(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          if (data && data.timestamp) {
+            if (appState.lastCallTimestamp === 0) {
+              appState.lastCallTimestamp = data.timestamp;
+            } else if (data.timestamp > appState.lastCallTimestamp) {
+              appState.lastCallTimestamp = data.timestamp;
+              announceStudentVoice(data.code, data.nama);
+            }
+          }
+        }
+      }, err => {
+        console.warn('Call event listener err:', err);
+      });
+
+      // 5. Listen to Admin Settings
+      db.collection('system').doc('admin').onSnapshot(async doc => {
+        if (!doc.exists) {
+          const defaultHash = await hashPassword('123!@#');
+          await db.collection('system').doc('admin').set({
+            username: 'kien',
+            passwordHash: defaultHash,
+            updatedAt: Date.now()
+          });
+          appState.credentials = { username: 'kien', passwordHash: defaultHash };
+        } else {
+          appState.credentials = doc.data();
+        }
+        const userLabel = document.getElementById('guruCurrentUsernameLabel');
+        if (userLabel && appState.credentials.username) {
+          userLabel.textContent = appState.credentials.username;
+        }
+      }, err => {
+        console.warn('Admin listener err:', err);
+      });
+    }
+
+    async function seedDefaultClasses() {
+      const defaults = ['XII RPL 1', 'XII RPL 2', 'XII TKJ 1', 'XII TKJ 2'];
+      const batch = db.batch();
+      defaults.forEach(name => {
+        const ref = db.collection('classes').doc();
+        batch.set(ref, { name, createdAt: Date.now() });
+      });
+      try {
+        await batch.commit();
+      } catch (e) {
+        console.warn('Seed classes:', e);
+      }
+    }
+
+    async function seedDefaultTopics() {
+      const defaults = [
+        'Routing MikroTik & VLAN',
+        'CRUD REST API Laravel',
+        'Desain UI Glassmorphism & Tailwind',
+        'Fiber Optic Splicing & OTDR'
+      ];
+      const batch = db.batch();
+      defaults.forEach(title => {
+        const ref = db.collection('topics').doc();
+        batch.set(ref, { title, createdAt: Date.now() });
+      });
+      try {
+        await batch.commit();
+      } catch (e) {
+        console.warn('Seed topics:', e);
       }
     }
 
@@ -1189,52 +1284,37 @@
       const u = document.getElementById('loginUsername').value.trim();
       const p = document.getElementById('loginPassword').value;
 
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: u, password: p })
-        });
-        const result = await res.json();
+      const hashed = await hashPassword(p);
+      const targetUser = (appState.credentials && appState.credentials.username) ? appState.credentials.username : 'kien';
+      const targetHash = appState.credentials ? appState.credentials.passwordHash : '';
 
-        if (result.success) {
-          appState.isLoggedIn = true;
-          sessionStorage.setItem(STORAGE_KEYS.AUTH_USER, 'true');
-          if (result.token) {
-            sessionStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, result.token);
-          }
-          closeLoginModal();
-          renderAuthHeader();
-          showToast('Login berhasil! Selamat datang di Panel Guru.', 'success');
-          switchTab('tab-guru');
-          syncDatabase();
-        } else {
-          showToast(result.message || 'Username atau password salah!', 'error');
-        }
-      } catch (err) {
-        showToast('Koneksi ke server database gagal.', 'error');
+      if (u === targetUser && (hashed === targetHash || (!targetHash && p === '123!@#'))) {
+        appState.isLoggedIn = true;
+        sessionStorage.setItem(STORAGE_KEYS.AUTH_USER, 'true');
+        closeLoginModal();
+        renderAuthHeader();
+        showToast('Login berhasil! Selamat datang di Panel Guru.', 'success');
+        switchTab('tab-guru');
+      } else {
+        showToast('Username atau password salah!', 'error');
       }
     }
 
-    async function handleLogout() {
-      try {
-        await authFetch('/api/auth/logout', { method: 'POST' });
-      } catch (e) {}
+    function handleLogout() {
       appState.isLoggedIn = false;
       sessionStorage.removeItem(STORAGE_KEYS.AUTH_USER);
-      sessionStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       renderAuthHeader();
       showToast('Anda telah keluar dari Panel Guru.', 'info');
       switchTab('tab-siswa');
     }
 
     // ==========================================
-    // 7. PENGATURAN AKUN GURU (Database Update)
+    // 7. PENGATURAN AKUN GURU (Firebase Firestore)
     // ==========================================
     function openAccountModal() {
       const modal = document.getElementById('modalAccountSettings');
       const card = document.getElementById('modalAccountCard');
-      document.getElementById('accNewUsername').value = appState.credentials.username;
+      document.getElementById('accNewUsername').value = appState.credentials.username || 'kien';
       document.getElementById('accNewPassword').value = '';
       document.getElementById('accConfirmPassword').value = '';
 
@@ -1270,27 +1350,23 @@
       }
 
       try {
-        const res = await authFetch('/api/auth/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: newU, password: newP })
-        });
-        const result = await res.json();
-        if (result.success) {
-          appState.credentials.username = newU;
-          document.getElementById('guruCurrentUsernameLabel').textContent = newU;
-          closeAccountModal();
-          showToast('Kredensial akun guru berhasil disimpan ke database!', 'success');
-        } else {
-          showToast(result.message || 'Gagal memperbarui akun', 'error');
-        }
+        const hashed = await hashPassword(newP);
+        await db.collection('system').doc('admin').set({
+          username: newU,
+          passwordHash: hashed,
+          updatedAt: Date.now()
+        }, { merge: true });
+        appState.credentials = { username: newU, passwordHash: hashed };
+        document.getElementById('guruCurrentUsernameLabel').textContent = newU;
+        closeAccountModal();
+        showToast('Kredensial akun guru berhasil disimpan ke Firebase!', 'success');
       } catch (err) {
-        showToast('Gagal menghubungi server database.', 'error');
+        showToast('Gagal memperbarui akun: ' + err.message, 'error');
       }
     }
 
     // ==========================================
-    // 8. MANAJEMEN KELAS & MATERI (Database Sync)
+    // 8. MANAJEMEN KELAS & MATERI (Firebase Firestore)
     // ==========================================
     let lastRenderedClassesJson = '';
     let lastRenderedTopicsJson = '';
@@ -1320,7 +1396,7 @@
         if (appState.classes.length === 0) {
           kelasChips.innerHTML = `<span class="text-xs text-slate-400 italic">Belum ada kelas di database.</span>`;
         } else {
-          kelasChips.innerHTML = appState.classes.map((k, idx) => `
+          kelasChips.innerHTML = appState.classes.map((k) => `
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-all">
               <span>${escapeHtml(k)}</span>
               <button type="button" onclick="deleteSingleKelas('${escapeHtml(k)}')" class="text-blue-500 hover:text-rose-500 transition-colors ml-0.5" title="Hapus kelas ini">
@@ -1351,7 +1427,7 @@
         if (appState.topics.length === 0) {
           materiChips.innerHTML = `<span class="text-xs text-slate-400 italic">Belum ada materi di database.</span>`;
         } else {
-          materiChips.innerHTML = appState.topics.map((m, idx) => `
+          materiChips.innerHTML = appState.topics.map((m) => `
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 transition-all">
               <span>${escapeHtml(m)}</span>
               <button type="button" onclick="deleteSingleMateri('${escapeHtml(m)}')" class="text-purple-500 hover:text-rose-500 transition-colors ml-0.5" title="Hapus materi ini">
@@ -1368,39 +1444,29 @@
       const val = document.getElementById('inputNewKelas').value.trim();
       if (!val) return;
 
+      if (appState.classes.includes(val)) {
+        showToast('Kelas tersebut sudah ada!', 'error');
+        return;
+      }
+
       try {
-        const res = await authFetch('/api/classes/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: val })
-        });
-        const result = await res.json();
-        if (result.success) {
-          document.getElementById('inputNewKelas').value = '';
-          showToast(result.message, 'success');
-          syncDatabase();
-        } else {
-          showToast(result.message, 'error');
-        }
+        await db.collection('classes').add({ name: val, createdAt: Date.now() });
+        document.getElementById('inputNewKelas').value = '';
+        showToast(`Kelas '${val}' berhasil ditambahkan ke Firebase!`, 'success');
       } catch (err) {
-        showToast('Gagal menghubungi database.', 'error');
+        showToast('Gagal menambahkan kelas: ' + err.message, 'error');
       }
     }
 
     async function deleteSingleKelas(name) {
       try {
-        const res = await authFetch('/api/classes/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name })
-        });
-        const result = await res.json();
-        if (result.success) {
-          showToast(result.message, 'info');
-          syncDatabase();
-        }
+        const snapshot = await db.collection('classes').where('name', '==', name).get();
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        showToast(`Kelas '${name}' berhasil dihapus!`, 'info');
       } catch (err) {
-        showToast('Gagal menghapus kelas dari database.', 'error');
+        showToast('Gagal menghapus kelas: ' + err.message, 'error');
       }
     }
 
@@ -1409,39 +1475,29 @@
       const val = document.getElementById('inputNewMateri').value.trim();
       if (!val) return;
 
+      if (appState.topics.includes(val)) {
+        showToast('Materi tersebut sudah ada!', 'error');
+        return;
+      }
+
       try {
-        const res = await authFetch('/api/topics/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: val })
-        });
-        const result = await res.json();
-        if (result.success) {
-          document.getElementById('inputNewMateri').value = '';
-          showToast(result.message, 'success');
-          syncDatabase();
-        } else {
-          showToast(result.message, 'error');
-        }
+        await db.collection('topics').add({ title: val, createdAt: Date.now() });
+        document.getElementById('inputNewMateri').value = '';
+        showToast(`Materi '${val}' berhasil ditambahkan ke Firebase!`, 'success');
       } catch (err) {
-        showToast('Gagal menghubungi database.', 'error');
+        showToast('Gagal menambahkan materi: ' + err.message, 'error');
       }
     }
 
     async function deleteSingleMateri(title) {
       try {
-        const res = await authFetch('/api/topics/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title })
-        });
-        const result = await res.json();
-        if (result.success) {
-          showToast(result.message, 'info');
-          syncDatabase();
-        }
+        const snapshot = await db.collection('topics').where('title', '==', title).get();
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        showToast(`Materi '${title}' berhasil dihapus!`, 'info');
       } catch (err) {
-        showToast('Gagal menghapus materi dari database.', 'error');
+        showToast('Gagal menghapus materi: ' + err.message, 'error');
       }
     }
 
@@ -1479,16 +1535,17 @@
 
     function openClearKelasModal() {
       openConfirmModal(
-        'Clear Semua Kelas di Database?',
-        'Tindakan ini akan mengosongkan seluruh daftar kelas di database. Pilihan di formulir pendaftaran siswa juga akan hilang.',
+        'Clear Semua Kelas di Firebase?',
+        'Tindakan ini akan mengosongkan seluruh daftar kelas di database Firebase. Pilihan di formulir pendaftaran siswa juga akan hilang.',
         async () => {
           try {
-            const res = await authFetch('/api/classes/clear', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message, 'info');
-            syncDatabase();
+            const snapshot = await db.collection('classes').get();
+            const batch = db.batch();
+            snapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            showToast('Semua kelas berhasil dihapus dari Firebase!', 'info');
           } catch (e) {
-            showToast('Gagal clear kelas dari database.', 'error');
+            showToast('Gagal clear kelas: ' + e.message, 'error');
           }
         }
       );
@@ -1496,16 +1553,17 @@
 
     function openClearMateriModal() {
       openConfirmModal(
-        'Clear Semua Materi di Database?',
-        'Tindakan ini akan mengosongkan seluruh daftar materi praktik di database. Pilihan di formulir pendaftaran siswa juga akan hilang.',
+        'Clear Semua Materi di Firebase?',
+        'Tindakan ini akan mengosongkan seluruh daftar materi praktik di database Firebase. Pilihan di formulir pendaftaran siswa juga akan hilang.',
         async () => {
           try {
-            const res = await authFetch('/api/topics/clear', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message, 'info');
-            syncDatabase();
+            const snapshot = await db.collection('topics').get();
+            const batch = db.batch();
+            snapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            showToast('Semua materi berhasil dihapus dari Firebase!', 'info');
           } catch (e) {
-            showToast('Gagal clear materi dari database.', 'error');
+            showToast('Gagal clear materi: ' + e.message, 'error');
           }
         }
       );
@@ -1513,16 +1571,19 @@
 
     function openClearAntrianModal() {
       openConfirmModal(
-        'Clear Seluruh Antrian di Database?',
-        'Tindakan ini akan mereset antrian menunggu dan siswa yang sedang aktif di database. Riwayat nilai siswa yang sudah selesai tetap tersimpan.',
+        'Clear Seluruh Antrian di Firebase?',
+        'Tindakan ini akan mereset antrian menunggu dan siswa yang sedang aktif di Firebase. Riwayat nilai siswa yang sudah selesai tetap tersimpan.',
         async () => {
           try {
-            const res = await authFetch('/api/queue/clear', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message, 'info');
-            syncDatabase();
+            const snapshot = await db.collection('students')
+              .where('status', 'in', ['waiting', 'in_progress'])
+              .get();
+            const batch = db.batch();
+            snapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            showToast('Antrian aktif berhasil dibersihkan dari Firebase!', 'info');
           } catch (e) {
-            showToast('Gagal membersihkan antrian di database.', 'error');
+            showToast('Gagal membersihkan antrian: ' + e.message, 'error');
           }
         }
       );
@@ -1534,23 +1595,26 @@
         return;
       }
       openConfirmModal(
-        'Clear Semua Rekap Nilai di Database?',
-        'Tindakan ini akan menghapus permanen seluruh riwayat nilai siswa yang sudah selesai di database. Data yang dihapus tidak dapat dipulihkan.',
+        'Clear Semua Rekap Nilai di Firebase?',
+        'Tindakan ini akan menghapus permanen seluruh riwayat nilai siswa yang sudah selesai di database Firebase. Data yang dihapus tidak dapat dipulihkan.',
         async () => {
           try {
-            const res = await authFetch('/api/history/clear', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message, 'info');
-            syncDatabase();
+            const snapshot = await db.collection('students')
+              .where('status', 'in', ['completed', 'skipped'])
+              .get();
+            const batch = db.batch();
+            snapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            showToast('Semua riwayat rekap nilai berhasil dibersihkan dari Firebase!', 'info');
           } catch (e) {
-            showToast('Gagal membersihkan rekap nilai dari database.', 'error');
+            showToast('Gagal membersihkan rekap nilai: ' + e.message, 'error');
           }
         }
       );
     }
 
     // ==========================================
-    // 9. REGISTRATION & TICKET CONFIRMATION
+    // 9. REGISTRATION & TICKET CONFIRMATION (Atomic Transaction)
     // ==========================================
     async function handleStudentRegister(e) {
       e.preventDefault();
@@ -1567,38 +1631,63 @@
       submitBtn.disabled = true;
 
       try {
-        const res = await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nama, kelas, materi })
+        const counterRef = db.collection('system').doc('counter');
+        const studentRef = db.collection('students').doc();
+        const registeredAt = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const nowTs = Date.now();
+
+        let newStudent = null;
+
+        await db.runTransaction(async (transaction) => {
+          const counterDoc = await transaction.get(counterRef);
+          let nextNum = 1;
+          if (counterDoc.exists && counterDoc.data().lastNum) {
+            nextNum = counterDoc.data().lastNum + 1;
+          }
+          const code = `#A-${String(nextNum).padStart(2, '0')}`;
+
+          transaction.set(counterRef, { lastNum: nextNum }, { merge: true });
+          transaction.set(studentRef, {
+            num: nextNum,
+            code: code,
+            nama: nama,
+            kelas: kelas,
+            materi: materi,
+            status: 'waiting',
+            nilai: null,
+            kelulusan: null,
+            catatan: '',
+            registeredAt: registeredAt,
+            registeredTimestamp: nowTs,
+            started_at: null,
+            completedAt: null,
+            completedTimestamp: null
+          });
+
+          newStudent = { num: nextNum, code, nama, kelas, materi };
         });
-        const result = await res.json();
 
-        if (result.success && result.student) {
-          document.getElementById('studentRegisterForm').reset();
+        document.getElementById('studentRegisterForm').reset();
 
-          // Show Confirmation Modal
-          document.getElementById('modalTicketNumber').textContent = result.student.code;
-          document.getElementById('modalTicketName').textContent = result.student.nama;
-          document.getElementById('modalTicketClass').textContent = result.student.kelas;
-          document.getElementById('modalTicketTopic').textContent = result.student.materi;
+        // Show Confirmation Modal
+        document.getElementById('modalTicketNumber').textContent = newStudent.code;
+        document.getElementById('modalTicketName').textContent = newStudent.nama;
+        document.getElementById('modalTicketClass').textContent = newStudent.kelas;
+        document.getElementById('modalTicketTopic').textContent = newStudent.materi;
 
-          const modal = document.getElementById('modalTicketConfirmation');
-          const card = document.getElementById('modalTicketCard');
-          modal.classList.remove('hidden');
-          setTimeout(() => {
-            modal.classList.remove('opacity-0');
-            card.classList.remove('scale-95');
-          }, 10);
-          lucide.createIcons();
+        const modal = document.getElementById('modalTicketConfirmation');
+        const card = document.getElementById('modalTicketCard');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modal.classList.remove('opacity-0');
+          card.classList.remove('scale-95');
+        }, 10);
+        lucide.createIcons();
 
-          showToast(`Nomor antrian ${result.student.code} berhasil disimpan ke database!`, 'success');
-          syncDatabase();
-        } else {
-          showToast(result.message || 'Gagal mendaftar', 'error');
-        }
+        showToast(`Nomor antrian ${newStudent.code} berhasil disimpan!`, 'success');
       } catch (err) {
-        showToast('Gagal menghubungi database.', 'error');
+        console.error('Register error:', err);
+        showToast('Gagal mendaftar ke Firebase: ' + (err.message || err), 'error');
       } finally {
         submitBtn.disabled = false;
       }
@@ -1646,37 +1735,46 @@
         return;
       }
       try {
-        const res = await authFetch('/api/queue/recall', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          showToast(data.message, 'info');
-          announceStudentVoice(appState.currentStudent.code, appState.currentStudent.nama);
-        }
+        const cur = appState.currentStudent;
+        await db.collection('system').doc('call_event').set({
+          code: cur.code,
+          nama: cur.nama,
+          timestamp: Date.now()
+        });
+        showToast(`Panggilan ulang untuk ${cur.code} dikirim!`, 'info');
+        announceStudentVoice(cur.code, cur.nama);
       } catch (err) {
-        showToast('Gagal mengirimkan panggilan ulang.', 'error');
+        showToast('Gagal mengirimkan panggilan ulang: ' + err.message, 'error');
       }
     }
 
     // ==========================================
-    // 11. KONTROL ANTRIAN & PENILAIAN (Database)
+    // 11. KONTROL ANTRIAN & PENILAIAN (Firebase Firestore)
     // ==========================================
     async function callNextStudentInternal() {
       try {
-        const res = await authFetch('/api/queue/call-next', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ score: null, skip_current: false })
-        });
-        const result = await res.json();
-        if (result.student) {
-          showToast(`Memanggil ${result.student.code} - ${result.student.nama}`, 'success');
-          announceStudentVoice(result.student.code, result.student.nama);
-        } else {
-          showToast(result.message || 'Antrian sudah habis.', 'info');
+        const nextStudent = appState.queue[0];
+        if (!nextStudent) {
+          showToast('Antrian sudah habis.', 'info');
+          return;
         }
-        syncDatabase();
+
+        const nowTs = Date.now();
+        await db.collection('students').doc(nextStudent.id).update({
+          status: 'in_progress',
+          started_at: nowTs
+        });
+
+        await db.collection('system').doc('call_event').set({
+          code: nextStudent.code,
+          nama: nextStudent.nama,
+          timestamp: nowTs
+        });
+
+        showToast(`Memanggil ${nextStudent.code} - ${nextStudent.nama}`, 'success');
+        announceStudentVoice(nextStudent.code, nextStudent.nama);
       } catch (err) {
-        showToast('Gagal memanggil antrian dari database.', 'error');
+        showToast('Gagal memanggil antrian: ' + err.message, 'error');
       }
     }
 
@@ -1700,77 +1798,174 @@
       btn.disabled = true;
 
       try {
-        const res = await authFetch('/api/queue/call-next', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ score, status, notes, skip_current: false })
+        const curId = appState.currentStudent.id;
+        const completedTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const nowTs = Date.now();
+
+        // 1. Complete active student
+        await db.collection('students').doc(curId).update({
+          status: 'completed',
+          nilai: Number(score),
+          kelulusan: status,
+          catatan: notes,
+          completedAt: completedTime,
+          completedTimestamp: nowTs
         });
-        const result = await res.json();
 
         // Reset grading fields
         document.getElementById('gradeScore').value = '';
         document.getElementById('gradeNotes').value = '';
+        showToast('Nilai berhasil disimpan ke Firebase!', 'success');
 
-        showToast('Nilai berhasil disimpan ke database!', 'success');
-        if (result.student) {
-          announceStudentVoice(result.student.code, result.student.nama);
+        // 2. Call next if available
+        const nextStudent = appState.queue[0];
+        if (nextStudent) {
+          await db.collection('students').doc(nextStudent.id).update({
+            status: 'in_progress',
+            started_at: nowTs
+          });
+          await db.collection('system').doc('call_event').set({
+            code: nextStudent.code,
+            nama: nextStudent.nama,
+            timestamp: nowTs
+          });
+          announceStudentVoice(nextStudent.code, nextStudent.nama);
+        } else {
+          showToast('Semua antrian selesai!', 'info');
         }
-        syncDatabase();
       } catch (err) {
-        showToast('Gagal menyimpan nilai ke database.', 'error');
+        showToast('Gagal menyimpan nilai: ' + err.message, 'error');
       } finally {
         btn.disabled = false;
       }
     }
 
     async function callNextOnly() {
+      if (!appState.currentStudent) {
+        callNextStudentInternal();
+        return;
+      }
+
       try {
-        const res = await authFetch('/api/queue/call-next', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ skip_current: true })
+        const curId = appState.currentStudent.id;
+        const completedTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const nowTs = Date.now();
+
+        await db.collection('students').doc(curId).update({
+          status: 'skipped',
+          kelulusan: 'Dilewati',
+          catatan: 'Dilewati tanpa nilai',
+          completedAt: completedTime,
+          completedTimestamp: nowTs
         });
-        const result = await res.json();
+
         showToast('Siswa sebelumnya dilewati.', 'info');
-        if (result.student) {
-          announceStudentVoice(result.student.code, result.student.nama);
+
+        const nextStudent = appState.queue[0];
+        if (nextStudent) {
+          await db.collection('students').doc(nextStudent.id).update({
+            status: 'in_progress',
+            started_at: nowTs
+          });
+          await db.collection('system').doc('call_event').set({
+            code: nextStudent.code,
+            nama: nextStudent.nama,
+            timestamp: nowTs
+          });
+          announceStudentVoice(nextStudent.code, nextStudent.nama);
         }
-        syncDatabase();
       } catch (err) {
-        showToast('Gagal menghubungi database.', 'error');
+        showToast('Gagal melewati antrian: ' + err.message, 'error');
       }
     }
 
     async function deleteHistoryItem(id) {
-      if (confirm('Hapus baris rekap nilai ini dari database?')) {
+      if (confirm('Hapus baris rekap nilai ini dari Firebase?')) {
         try {
-          const res = await authFetch('/api/history/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
-          });
-          const result = await res.json();
-          if (result.success) {
-            showToast(result.message, 'info');
-            syncDatabase();
-          }
+          await db.collection('students').doc(id).delete();
+          showToast('Data riwayat nilai dihapus dari Firebase!', 'info');
         } catch (err) {
-          showToast('Gagal menghapus riwayat dari database.', 'error');
+          showToast('Gagal menghapus riwayat: ' + err.message, 'error');
         }
       }
     }
 
     // ==========================================
-    // 12. DOWNLOAD EXCEL (.xls LANGSUNG DARI DATABASE)
+    // 12. DOWNLOAD EXCEL (.xls LANGSUNG DI BROWSER)
     // ==========================================
     function downloadRekapExcel() {
       if (appState.history.length === 0) {
         showToast('Belum ada data rekap nilai di database untuk diunduh!', 'error');
         return;
       }
-      const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || '';
       showToast('Mengunduh file Excel rekap nilai...', 'info');
-      window.location.href = '/api/export-excel?token=' + encodeURIComponent(token);
+
+      let rowsHtml = '';
+      appState.history.forEach((r, idx) => {
+        const nilaiStr = (r.nilai !== null && r.nilai !== undefined) ? r.nilai : '-';
+        const statusStr = r.kelulusan || r.status || '-';
+        const catatanStr = r.catatan || '-';
+        const waktuStr = r.completedAt || '-';
+        const statusColor = statusStr === 'Lulus' ? '#059669' : '#dc2626';
+
+        rowsHtml += `
+          <tr>
+            <td style="text-align: center; border: 1px solid #d1d5db; padding: 6px;">${idx + 1}</td>
+            <td style="text-align: center; font-weight: bold; border: 1px solid #d1d5db; padding: 6px;">${r.code}</td>
+            <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(r.nama)}</td>
+            <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(r.kelas)}</td>
+            <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(r.materi)}</td>
+            <td style="text-align: center; font-weight: bold; border: 1px solid #d1d5db; padding: 6px;">${nilaiStr}</td>
+            <td style="text-align: center; font-weight: bold; border: 1px solid #d1d5db; padding: 6px; color: ${statusColor};">${statusStr}</td>
+            <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(catatanStr)}</td>
+            <td style="text-align: center; border: 1px solid #d1d5db; padding: 6px;">${waktuStr}</td>
+          </tr>
+        `;
+      });
+
+      const exportDate = new Date().toLocaleString('id-ID');
+      const template = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+          <style>
+            th { background-color: #2563eb; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #1e40af; padding: 10px; }
+          </style>
+        </head>
+        <body>
+          <h2 style="font-family: Arial, sans-serif; color: #1e1b4b;">REKAPITULASI NILAI UJIAN PRAKTIK SISWA</h2>
+          <p style="font-family: Arial, sans-serif; font-size: 12px; color: #64748b;">Tanggal Export: ${exportDate}</p>
+          <table style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px;" border="1">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>No. Antrian</th>
+                <th>Nama Siswa</th>
+                <th>Kelas</th>
+                <th>Materi</th>
+                <th>Nilai</th>
+                <th>Status</th>
+                <th>Catatan</th>
+                <th>Waktu Selesai</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `.trim();
+
+      const blob = new Blob([template], { type: 'application/vnd.ms-excel;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Rekap_Nilai_${new Date().toISOString().slice(0, 10)}.xls`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     // ==========================================
@@ -1792,7 +1987,7 @@
       }
 
       tbody.innerHTML = appState.history.map((row, idx) => {
-        const isLulus = row.status === 'Lulus';
+        const isLulus = row.status === 'Lulus' || row.kelulusan === 'Lulus';
         const badgeClass = isLulus 
           ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
           : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800';
@@ -1804,16 +1999,16 @@
             <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">${escapeHtml(row.nama)}</td>
             <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(row.kelas)}</td>
             <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(row.materi)}</td>
-            <td class="py-3 px-4 font-black text-sm text-slate-900 dark:text-white">${row.nilai !== null ? row.nilai : '-'}</td>
+            <td class="py-3 px-4 font-black text-sm text-slate-900 dark:text-white">${(row.nilai !== null && row.nilai !== undefined) ? row.nilai : '-'}</td>
             <td class="py-3 px-4">
               <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${badgeClass}">
-                ${row.status}
+                ${row.kelulusan || row.status || '-'}
               </span>
             </td>
             <td class="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">${escapeHtml(row.catatan || '-')}</td>
             <td class="py-3 px-4 font-mono text-xs text-slate-500">${row.completedAt || '-'}</td>
             <td class="py-3 px-4 text-right">
-              <button onclick="deleteHistoryItem(${row.id})" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Hapus dari database">
+              <button onclick="deleteHistoryItem('${row.id}')" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Hapus dari Firebase">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
               </button>
             </td>
@@ -1842,7 +2037,6 @@
       container.innerHTML = appState.queue.map((student, idx) => {
         const isNext = idx === 0;
 
-        // Lencana status di kanan: Siap Maju untuk nomor 1, dan keterangan giliran untuk nomor berikutnya
         const badgeHighlight = isNext
           ? `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30 animate-pulse">
                <span class="w-2 h-2 rounded-full bg-white"></span>
@@ -1852,7 +2046,6 @@
                Giliran ke-${idx + 1}
              </span>`;
 
-        // Card styling: Kontras tinggi di Dark Mode & Light Mode
         const borderCard = isNext
           ? 'border-2 border-emerald-400 dark:border-emerald-500/50 bg-emerald-50/90 dark:bg-emerald-950/30 shadow-md shadow-emerald-500/10'
           : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm';
@@ -1860,13 +2053,11 @@
         return `
           <div class="p-3.5 sm:p-4 rounded-2xl ${borderCard} flex items-center justify-between gap-3 sm:gap-4 transition-all hover:scale-[1.01]">
             <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-              <!-- Kotak Nomor Antrian: Lebar, Menonjol, dan Tidak Terpotong/Wrapping -->
               <div class="flex-shrink-0 min-w-[76px] sm:min-w-[86px] px-3 py-2 rounded-xl bg-gradient-to-br from-indigo-500/15 via-purple-500/15 to-blue-500/15 border border-indigo-500/30 dark:border-indigo-500/40 text-center flex flex-col items-center justify-center shadow-sm">
                 <span class="text-[9px] uppercase font-bold tracking-widest text-indigo-600 dark:text-indigo-400 leading-none mb-1">Antrian</span>
                 <span class="font-black font-mono text-lg sm:text-2xl text-brand-purple dark:text-purple-300 leading-none tracking-tight">${student.code}</span>
               </div>
 
-              <!-- Detail Siswa -->
               <div class="min-w-0">
                 <div class="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-snug truncate">
                   ${escapeHtml(student.nama)}
@@ -1879,7 +2070,6 @@
               </div>
             </div>
 
-            <!-- Lencana Urutan Giliran -->
             <div class="flex-shrink-0">
               ${badgeHighlight}
             </div>
@@ -2005,16 +2195,13 @@
     }
 
     // ==========================================
-    // 15. INITIAL BOOTSTRAP & REALTIME POLLING
+    // 15. INITIAL BOOTSTRAP & REALTIME LISTENERS
     // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
       initTheme();
       switchTab('tab-siswa');
       updateClockAndTimers();
-      syncDatabase();
-
-      // Real-time synchronization every 1.5 seconds across all connected devices!
-      setInterval(syncDatabase, 1500);
+      initFirebaseRealtime();
 
       // Pre-warm speech voices
       if ('speechSynthesis' in window) {

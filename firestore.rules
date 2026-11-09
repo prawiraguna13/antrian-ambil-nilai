@@ -1,0 +1,226 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: students
+// Document ID: auto-generated or queue ticket ID
+// Fields:
+//   - num: int (> 0, immutable) - Queue ticket order number
+//   - code: string (1-20 chars, immutable) - Formatted ticket code (e.g. "#A-01")
+//   - nama: string (1-100 chars) - Student full name
+//   - kelas: string (1-50 chars) - Student class / study group
+//   - materi: string (1-100 chars) - Practice module / examination topic
+//   - status: string ('waiting', 'in_progress', 'completed', 'skipped') - Current queue status
+//   - nilai: number (optional/nullable, 0-100) - Evaluation score
+//   - kelulusan: string (optional/nullable, 'Lulus', 'Ulang', 'Dilewati') - Graduation status
+//   - catatan: string (optional/nullable, max 500 chars) - Teacher notes or remedial remarks
+//   - registeredAt: string (1-50 chars, immutable) - Formatted registration time string
+//   - registeredTimestamp: int | timestamp (immutable) - Registration epoch timestamp
+//   - started_at: int | timestamp (optional/nullable) - Practice start epoch timestamp
+//   - completedAt: string (optional/nullable, max 50 chars) - Completion time string
+//   - completedTimestamp: int | timestamp (optional/nullable) - Completion epoch timestamp
+//
+// Collection: classes
+// Document ID: auto-generated
+// Fields:
+//   - name: string (1-50 chars) - Class name
+//   - createdAt: int | timestamp (immutable) - Creation timestamp
+//
+// Collection: topics
+// Document ID: auto-generated
+// Fields:
+//   - title: string (1-100 chars) - Topic / module title
+//   - createdAt: int | timestamp (immutable) - Creation timestamp
+//
+// Collection: system
+// Document IDs:
+//   - counter:
+//     - lastNum: int (>= 0) - Atomic sequential ticket counter
+//   - call_event:
+//     - code: string (0-20 chars) - Ticket code for TTS voice broadcast
+//     - nama: string (0-100 chars) - Student name for TTS voice broadcast
+//     - timestamp: int | timestamp - Broadcast event dispatch timestamp
+//   - admin:
+//     - username: string (1-50 chars) - Teacher admin username
+//     - passwordHash: string (1-128 chars) - Hashed admin password
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Global Helper Functions
+    // ===============================================================
+
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    function validString(str, minLen, maxLen) {
+      return str is string && str.size() >= minLen && str.size() <= maxLen;
+    }
+
+    function validOptionalString(data, field, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function validTimestamp(val) {
+      return val is timestamp || ((val is int || val is number) && val > 0);
+    }
+
+    function validOptionalTimestamp(data, field) {
+      return !(field in data) || data[field] == null || validTimestamp(data[field]);
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validator Functions
+    // ===============================================================
+
+    // Validator for student queue tickets
+    function isValidStudent(data) {
+      return hasRequiredFields(data, [
+               'num', 'code', 'nama', 'kelas', 'materi', 'status',
+               'registeredAt', 'registeredTimestamp'
+             ]) &&
+             hasOnlyAllowedFields(data, [
+               'num', 'code', 'nama', 'kelas', 'materi', 'status',
+               'nilai', 'kelulusan', 'catatan', 'registeredAt',
+               'registeredTimestamp', 'started_at', 'completedAt', 'completedTimestamp'
+             ]) &&
+             data.num is int && data.num > 0 &&
+             validString(data.code, 1, 20) &&
+             validString(data.nama, 1, 100) &&
+             validString(data.kelas, 1, 50) &&
+             validString(data.materi, 1, 100) &&
+             data.status is string && data.status in ['waiting', 'in_progress', 'completed', 'skipped'] &&
+             validString(data.registeredAt, 1, 50) &&
+             validTimestamp(data.registeredTimestamp) &&
+             (!('nilai' in data) || data.nilai == null || (data.nilai is number && data.nilai >= 0 && data.nilai <= 100)) &&
+             (!('kelulusan' in data) || data.kelulusan == null || (data.kelulusan is string && data.kelulusan in ['Lulus', 'Ulang', 'Dilewati'])) &&
+             validOptionalString(data, 'catatan', 500) &&
+             validOptionalTimestamp(data, 'started_at') &&
+             validOptionalString(data, 'completedAt', 50) &&
+             validOptionalTimestamp(data, 'completedTimestamp');
+    }
+
+    // Enforce initial student state during self-registration
+    function isInitialStudentCreate(data) {
+      return data.status == 'waiting' &&
+             (!('nilai' in data) || data.nilai == null) &&
+             (!('kelulusan' in data) || data.kelulusan == null) &&
+             (!('started_at' in data) || data.started_at == null) &&
+             (!('completedAt' in data) || data.completedAt == null) &&
+             (!('completedTimestamp' in data) || data.completedTimestamp == null);
+    }
+
+    // Validator for class entries
+    function isValidClass(data) {
+      return hasRequiredFields(data, ['name', 'createdAt']) &&
+             hasOnlyAllowedFields(data, ['name', 'createdAt']) &&
+             validString(data.name, 1, 50) &&
+             validTimestamp(data.createdAt);
+    }
+
+    // Validator for topic entries
+    function isValidTopic(data) {
+      return hasRequiredFields(data, ['title', 'createdAt']) &&
+             hasOnlyAllowedFields(data, ['title', 'createdAt']) &&
+             validString(data.title, 1, 100) &&
+             validTimestamp(data.createdAt);
+    }
+
+    // Validator for counter singleton
+    function isValidCounter(data) {
+      return hasRequiredFields(data, ['lastNum']) &&
+             hasOnlyAllowedFields(data, ['lastNum']) &&
+             data.lastNum is int &&
+             data.lastNum >= 0;
+    }
+
+    // Validator for TTS voice broadcast event
+    function isValidCallEvent(data) {
+      return hasRequiredFields(data, ['code', 'nama', 'timestamp']) &&
+             hasOnlyAllowedFields(data, ['code', 'nama', 'timestamp']) &&
+             data.code is string && data.code.size() <= 20 &&
+             data.nama is string && data.nama.size() <= 100 &&
+             validTimestamp(data.timestamp);
+    }
+
+    // Validator for admin settings
+    function isValidAdmin(data) {
+      return hasRequiredFields(data, ['username', 'passwordHash']) &&
+             hasOnlyAllowedFields(data, ['username', 'passwordHash']) &&
+             validString(data.username, 1, 50) &&
+             validString(data.passwordHash, 1, 128);
+    }
+
+    // ===============================================================
+    // Collection Security Rules
+    // ===============================================================
+
+    // Root default deny for any undefined collection or path
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. Students Queue Collection
+    match /students/{studentId} {
+      // Anyone can read (display monitor, student status check, teacher grading)
+      allow read: if true;
+
+      // Anyone can self-register a ticket; initial status must be 'waiting' and un-graded
+      allow create: if isValidStudent(request.resource.data) &&
+                       isInitialStudentCreate(request.resource.data);
+
+      // Updates allowed for status transitions, grading, and notes; identity fields immutable
+      allow update: if isValidStudent(request.resource.data) &&
+                       areImmutableFieldsUnchanged(['num', 'code', 'registeredAt', 'registeredTimestamp']);
+
+      // Deletions allowed for queue resets and individual ticket removal
+      allow delete: if true;
+    }
+
+    // 2. Classes Collection
+    match /classes/{classId} {
+      allow read: if true;
+      allow create: if isValidClass(request.resource.data);
+      allow update: if isValidClass(request.resource.data) &&
+                       areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if true;
+    }
+
+    // 3. Topics Collection
+    match /topics/{topicId} {
+      allow read: if true;
+      allow create: if isValidTopic(request.resource.data);
+      allow update: if isValidTopic(request.resource.data) &&
+                       areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if true;
+    }
+
+    // 4. System Documents Collection
+    match /system/{docId} {
+      // Allow reading system documents (counter, call_event, admin)
+      allow read: if docId in ['counter', 'call_event', 'admin'];
+
+      // Allow creating or updating specific system documents with strict schema per document
+      allow create, update: if (docId == 'counter' && isValidCounter(request.resource.data)) ||
+                               (docId == 'call_event' && isValidCallEvent(request.resource.data)) ||
+                               (docId == 'admin' && isValidAdmin(request.resource.data));
+
+      // Prevent accidental or malicious deletion of critical system documents
+      allow delete: if false;
+    }
+  }
+}

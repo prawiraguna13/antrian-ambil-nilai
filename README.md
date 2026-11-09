@@ -1,19 +1,27 @@
-# ⚡ Sistem Antrian Praktik Siswa (SPA + SQLite Backend)
+# ⚡ Sistem Antrian Praktik Siswa (Firebase Real-Time SPA)
 
-Aplikasi web **Single-Page Application (SPA)** berbasis **HTML5 + Tailwind CSS + Vanilla JavaScript** yang didukung backend ringan **Python + SQLite (`server.py`)** untuk sinkronisasi antrian, penilaian, dan panggilan suara secara real-time antar-perangkat di jaringan lokal (LAN/Wi-Fi).
+Aplikasi web **Single-Page Application (SPA)** berbasis **HTML5 + Tailwind CSS + Vanilla JavaScript** yang terhubung langsung ke **Google Firebase (Cloud Firestore)**. Sinkronisasi antrian, pemanggilan suara (TTS), penilaian guru, dan rekap nilai berjalan secara **real-time instan** antar-perangkat (HP, Tablet, Laptop, Layar Proyektor) di mana pun tanpa perlu server lokal.
 
 ---
 
-## 🚀 Cara Menjalankan Aplikasi
+## 🌐 Cara Membuka / Menjalankan Aplikasi
 
-Jalankan web server lokal dengan perintah:
-```bash
-bash start.sh
-# atau: python3 server.py
-```
-Lalu buka browser di komputer lokal atau perangkat lain dalam satu jaringan Wi-Fi:
-👉 **[http://localhost:8000/](http://localhost:8000/)** (atau ganti `localhost` dengan IP komputer server).
-Anda cukup melakukan klik dua kali (*double click*) pada file [`index.html`](file:///Users/kien/Documents/Web-Antrian/index.html) di Finder/File Manager. Seluruh fitur berjalan 100% mandiri di dalam browser.
+Aplikasi bersifat **Serverless** dan dapat dijalankan dengan cara:
+
+### Opsi 1: Lewat GitHub Pages (Online Publik)
+Aktifkan GitHub Pages di repositori:
+1. Masuk ke **Settings** → **Pages** pada repositori GitHub.
+2. Pilih branch `main` dan folder `/(root)`, lalu klik **Save**.
+3. Akses via link: 👉 **`https://prawiraguna13.github.io/antrian-ambil-nilai/`**
+
+### Opsi 2: Buka Langsung File HTML
+Cukup buka file [`index.html`](file:///Users/kien/Documents/Web-Antrian/index.html) langsung di browser Anda. Aplikasi langsung terhubung ke database cloud Firebase!
+
+---
+
+## 🔒 Aturan Keamanan (Firestore Security Rules)
+File [`firestore.rules`](file:///Users/kien/Documents/Web-Antrian/firestore.rules) telah disediakan untuk mengamankan data antrian di Firebase.
+Salin isi file tersebut ke tab **Firestore Database** → **Rules** di Firebase Console.
 
 ---
 
