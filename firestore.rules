@@ -13,6 +13,7 @@ rules_version = '2';
 //   - kelas: string (1-50 chars) - Student class / study group
 //   - materi: string (1-100 chars) - Practice module / examination topic
 //   - status: string ('waiting', 'in_progress', 'completed', 'skipped') - Current queue status
+//   - slot: int (optional/nullable, 1-5) - Examination slot number (1-5)
 //   - nilai: number (optional/nullable, 0-100) - Evaluation score
 //   - kelulusan: string (optional/nullable, 'Lulus', 'Ulang', 'Dilewati') - Graduation status
 //   - catatan: string (optional/nullable, max 500 chars) - Teacher notes or remedial remarks
@@ -41,6 +42,7 @@ rules_version = '2';
 //   - call_event:
 //     - code: string (0-20 chars) - Ticket code for TTS voice broadcast
 //     - nama: string (0-100 chars) - Student name for TTS voice broadcast
+//     - slot: int (optional/nullable, 1-5) - Examination slot number (1-5)
 //     - timestamp: int | timestamp - Broadcast event dispatch timestamp
 //   - admin:
 //     - username: string (1-50 chars) - Teacher admin username
@@ -94,7 +96,7 @@ service cloud.firestore {
                'registeredAt', 'registeredTimestamp'
              ]) &&
              hasOnlyAllowedFields(data, [
-               'num', 'code', 'nama', 'kelas', 'materi', 'status',
+               'num', 'code', 'nama', 'kelas', 'materi', 'status', 'slot',
                'nilai', 'kelulusan', 'catatan', 'registeredAt',
                'registeredTimestamp', 'started_at', 'completedAt', 'completedTimestamp'
              ]) &&
@@ -104,6 +106,7 @@ service cloud.firestore {
              validString(data.kelas, 1, 50) &&
              validString(data.materi, 1, 100) &&
              data.status is string && data.status in ['waiting', 'in_progress', 'completed', 'skipped'] &&
+             (!('slot' in data) || data.slot == null || (data.slot is int && data.slot >= 1 && data.slot <= 5)) &&
              validString(data.registeredAt, 1, 50) &&
              validTimestamp(data.registeredTimestamp) &&
              (!('nilai' in data) || data.nilai == null || (data.nilai is number && data.nilai >= 0 && data.nilai <= 100)) &&
@@ -117,6 +120,7 @@ service cloud.firestore {
     // Enforce initial student state during self-registration
     function isInitialStudentCreate(data) {
       return data.status == 'waiting' &&
+             (!('slot' in data) || data.slot == null) &&
              (!('nilai' in data) || data.nilai == null) &&
              (!('kelulusan' in data) || data.kelulusan == null) &&
              (!('started_at' in data) || data.started_at == null) &&
@@ -151,9 +155,10 @@ service cloud.firestore {
     // Validator for TTS voice broadcast event
     function isValidCallEvent(data) {
       return hasRequiredFields(data, ['code', 'nama', 'timestamp']) &&
-             hasOnlyAllowedFields(data, ['code', 'nama', 'timestamp']) &&
+             hasOnlyAllowedFields(data, ['code', 'nama', 'timestamp', 'slot']) &&
              data.code is string && data.code.size() <= 20 &&
              data.nama is string && data.nama.size() <= 100 &&
+             (!('slot' in data) || data.slot == null || (data.slot is int && data.slot >= 1 && data.slot <= 5)) &&
              validTimestamp(data.timestamp);
     }
 
