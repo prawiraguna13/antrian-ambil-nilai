@@ -1,0 +1,13 @@
+# SQLite databases
+*.db
+*.db-wal
+*.db-shm
+test_antrian.db
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS artifacts
+.DS_Store

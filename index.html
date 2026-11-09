@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Antrian Praktik Siswa</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              blue: '#2563eb',
+              sky: '#38bdf8',
+              purple: '#7c3aed',
+              indigo: '#4f46e5',
+              fuchsia: '#c026d3'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Base Body & Themes */
+    body {
+      background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 40%, #f5f3ff 80%, #faf5ff 100%);
+      background-attachment: fixed;
+      color: #0f172a;
+      min-height: 100vh;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    html.dark body {
+      background: linear-gradient(135deg, #090d1a 0%, #0f122e 40%, #1e103f 80%, #110826 100%);
+      background-attachment: fixed;
+      color: #f8fafc;
+    }
+
+    /* Glassmorphism Cards */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+      transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    html.dark .glass-card {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Glass Form Inputs */
+    .glass-input {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #0f172a;
+      transition: all 0.2s ease;
+    }
+    .glass-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    .glass-input option {
+      background: #ffffff;
+      color: #0f172a;
+    }
+    html.dark .glass-input {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #f8fafc;
+    }
+    html.dark .glass-input:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+    }
+    html.dark .glass-input option {
+      background: #0f172a;
+      color: #f8fafc;
+    }
+
+    /* Ambient Lighting Orbs */
+    .glow-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.18;
+      transition: opacity 0.4s ease;
+    }
+    html.dark .glow-orb {
+      opacity: 0.45;
+    }
+
+    /* Animations */
+    @keyframes toastSlideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-toast {
+      animation: toastSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.2), inset 0 0 15px rgba(139, 92, 246, 0.1); }
+      50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.4), inset 0 0 25px rgba(139, 92, 246, 0.25); }
+    }
+    .pulse-glow {
+      animation: pulseGlow 3s infinite ease-in-out;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); }
+    html.dark ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.4); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.7); }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300 relative selection:bg-brand-purple selection:text-white">
+
+  <!-- Ambient Light Orbs -->
+  <div class="glow-orb w-96 h-96 -top-20 -left-20 bg-blue-600 dark:bg-blue-600"></div>
+  <div class="glow-orb w-[30rem] h-[30rem] top-1/2 -right-20 bg-purple-600 dark:bg-purple-700"></div>
+  <div class="glow-orb w-96 h-96 -bottom-20 left-1/3 bg-indigo-600 dark:bg-indigo-700"></div>
+
+  <!-- Main App Shell -->
+  <div class="relative z-10 flex flex-col min-h-screen">
+    
+    <!-- HEADER NAVIGASI UTAMA -->
+    <header class="sticky top-0 z-40 backdrop-blur-xl bg-white/75 dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-slate-800/80 px-4 lg:px-8 py-3.5 transition-colors">
+      <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+        
+        <!-- Brand / Logo -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-blue via-brand-indigo to-brand-purple flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+            <i data-lucide="layers" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 dark:from-blue-400 dark:via-indigo-300 dark:to-purple-400 bg-clip-text text-transparent leading-tight">
+              PraktikLab
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sistem Antrian Praktik Siswa</p>
+          </div>
+        </div>
+
+        <!-- 3 Tab Utama Navigasi -->
+        <nav class="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/60 shadow-inner order-3 sm:order-2 w-full sm:w-auto justify-center overflow-x-auto">
+          <button onclick="switchTab('tab-siswa')" id="nav-tab-siswa" class="nav-tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>Form Daftar</span>
+          </button>
+          <button onclick="switchTab('tab-antrian')" id="nav-tab-antrian" class="nav-tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all">
+            <i data-lucide="tv" class="w-4 h-4"></i>
+            <span>Layar Antrian</span>
+          </button>
+          <button onclick="switchTab('tab-guru')" id="nav-tab-guru" class="nav-tab-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>Panel Guru</span>
+          </button>
+        </nav>
+
+        <!-- Right Side: Dark Mode Toggle & Login Guru Button -->
+        <div class="flex items-center gap-2.5 order-2 sm:order-3 ml-auto sm:ml-0">
+          
+          <!-- Database Status Badge -->
+          <div class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" title="Tersinkronisasi Real-Time dengan Database SQLite">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>SQLite Database</span>
+          </div>
+
+          <!-- Toggle Dark / Light Mode -->
+          <button onclick="toggleDarkMode()" id="btnThemeToggle" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-brand-purple dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500 transition-all shadow-sm flex items-center justify-center min-w-[40px] min-h-[40px]" title="Ubah Tema">
+            <span id="themeToggleIcon" class="flex items-center justify-center"></span>
+          </button>
+
+          <!-- Auth Button (Login Guru or Logout) -->
+          <div id="authHeaderArea">
+            <!-- Injected dynamically via JS: "Login Guru" or "Logout" -->
+          </div>
+
+        </div>
+
+      </div>
+    </header>
+
+    <!-- KONTEN UTAMA APLIKASI (SPA VIEWS) -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+      <!-- ========================================== -->
+      <!-- TAMPILAN 1: FORM PENDAFTARAN SISWA        -->
+      <!-- ========================================== -->
+      <section id="tab-siswa" class="tab-view block">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          <!-- Left: Registration Form Card -->
+          <div class="lg:col-span-7 glass-card rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br from-brand-blue/20 to-brand-purple/30 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="mb-6">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 mb-2">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                Pendaftaran Praktik Siswa
+              </span>
+              <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Ambil Nomor Antrian
+              </h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Lengkapi data diri Anda untuk masuk ke dalam antrian giliran praktik laboratorium.
+              </p>
+            </div>
+
+            <form id="studentRegisterForm" onsubmit="handleStudentRegister(event)" class="space-y-5">
+              
+              <!-- 1. Nama Lengkap -->
+              <div>
+                <label for="regNama" class="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Nama Lengkap Siswa <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="user" class="w-5 h-5"></i>
+                  </span>
+                  <input type="text" id="regNama" required placeholder="Contoh: Muhammad Budi Pratama"
+                    class="glass-input w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm sm:text-base outline-none transition-all placeholder:text-slate-400">
+                </div>
+              </div>
+
+              <!-- 2. Kelas / Jurusan (Dinamis dari inputan Guru) -->
+              <div>
+                <label for="regKelas" class="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Kelas / Jurusan <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                  </span>
+                  <select id="regKelas" required
+                    class="glass-input w-full pl-11 pr-10 py-3.5 rounded-2xl text-sm sm:text-base outline-none transition-all appearance-none cursor-pointer">
+                    <!-- Populated dynamically -->
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                  </span>
+                </div>
+                <p id="regKelasEmptyNotice" class="text-xs text-amber-500 dark:text-amber-400 mt-1.5 hidden flex items-center gap-1">
+                  <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                  Belum ada pilihan kelas. Guru dapat menambahkannya di tab Panel Guru.
+                </p>
+              </div>
+
+              <!-- 3. Materi Praktik (Dinamis dari inputan Guru) -->
+              <div>
+                <label for="regMateri" class="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Materi Praktik <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                  </span>
+                  <select id="regMateri" required
+                    class="glass-input w-full pl-11 pr-10 py-3.5 rounded-2xl text-sm sm:text-base outline-none transition-all appearance-none cursor-pointer">
+                    <!-- Populated dynamically -->
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                  </span>
+                </div>
+                <p id="regMateriEmptyNotice" class="text-xs text-amber-500 dark:text-amber-400 mt-1.5 hidden flex items-center gap-1">
+                  <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                  Belum ada pilihan materi. Guru dapat menambahkannya di tab Panel Guru.
+                </p>
+              </div>
+
+              <!-- Tombol Submit Ambil Antrian -->
+              <button type="submit" id="btnSubmitDaftar"
+                class="w-full mt-2 py-4 px-6 rounded-2xl font-bold text-white bg-gradient-to-r from-brand-blue via-brand-indigo to-brand-purple hover:opacity-95 active:scale-[0.99] transition-all shadow-lg shadow-indigo-500/35 flex items-center justify-center gap-2 text-base">
+                <i data-lucide="ticket" class="w-5 h-5"></i>
+                <span>Daftar Antrian</span>
+              </button>
+
+            </form>
+          </div>
+
+          <!-- Right: Live Queue Information & Status -->
+          <div class="lg:col-span-5 space-y-5">
+            
+            <!-- Sedang Maju Mini Card -->
+            <div class="glass-card rounded-3xl p-6 relative overflow-hidden border-indigo-500/30">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                  <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
+                  <span class="text-xs font-bold tracking-wider uppercase text-emerald-500 dark:text-emerald-400">Sedang Praktik Sekarang</span>
+                </div>
+                <span id="activeBadgeLiveMini" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  #--
+                </span>
+              </div>
+
+              <div id="activeStudentMiniDisplay">
+                <h4 id="activeMiniName" class="text-lg font-bold text-slate-900 dark:text-white truncate">
+                  Belum ada siswa aktif
+                </h4>
+                <p id="activeMiniTopic" class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Menunggu guru memanggil giliran berikutnya
+                </p>
+              </div>
+            </div>
+
+            <!-- Total Counters -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="glass-card rounded-2xl p-5 text-center">
+                <div class="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent" id="statWaitingSiswa">
+                  0
+                </div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">Siswa Menunggu</div>
+              </div>
+              <div class="glass-card rounded-2xl p-5 text-center">
+                <div class="text-3xl font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent" id="statCompletedSiswa">
+                  0
+                </div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">Selesai Dinilai</div>
+              </div>
+            </div>
+
+            <!-- Petunjuk Lab -->
+            <div class="glass-card rounded-3xl p-6 text-sm text-slate-600 dark:text-slate-300 space-y-2.5">
+              <h4 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-brand-purple"></i>
+                Informasi Pelaksanaan Praktik
+              </h4>
+              <ul class="text-xs leading-relaxed space-y-1.5 list-disc list-inside text-slate-500 dark:text-slate-400">
+                <li>Ambil tiket antrian terlebih dahulu melalui formulir di samping.</li>
+                <li>Perhatikan layar monitor antrian atau dengarkan panggilan suara.</li>
+                <li>Siapkan peralatan praktikum sebelum giliran nomor Anda dipanggil.</li>
+              </ul>
+              <div class="pt-2">
+                <button onclick="switchTab('tab-antrian')" class="text-xs font-bold text-brand-purple dark:text-purple-400 hover:underline flex items-center gap-1">
+                  Buka Layar Antrian Monitor &rarr;
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAMPILAN 3: LAYAR ANTRIAN (MONITOR/PROYEKTOR) -->
+      <!-- ========================================== -->
+      <section id="tab-antrian" class="tab-view hidden">
+        <div class="space-y-6">
+          
+          <!-- Monitor Header Bar -->
+          <div class="flex flex-wrap items-center justify-between gap-4 glass-card rounded-2xl p-4 sm:p-5">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-purple-500/10 text-brand-purple dark:text-purple-400 border border-purple-500/20">
+                <i data-lucide="monitor" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Layar Monitor Antrian Praktik</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Tampilan proyektor & pengumuman audio otomatis</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <!-- Digital Clock -->
+              <div class="text-right">
+                <div id="monitorLiveClock" class="font-mono text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">00:00:00</div>
+                <div id="monitorLiveDate" class="text-xs text-slate-500 dark:text-slate-400">Senin, 1 Jan 2026</div>
+              </div>
+              <!-- Fullscreen button -->
+              <button onclick="toggleFullscreen()" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand-purple dark:hover:text-purple-300 transition-all" title="Mode Layar Penuh">
+                <i data-lucide="maximize" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Main Layout: Sesi Kiri/Atas (Sedang Praktik) & Sesi Kanan/Bawah (Menunggu) -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            
+            <!-- Sesi Kiri/Atas: KARTU SANGAT BESAR SISWA SEDANG PRAKTIK -->
+            <div class="lg:col-span-7 flex flex-col">
+              <div class="glass-card pulse-glow rounded-3xl p-6 sm:p-10 flex-1 flex flex-col justify-between relative overflow-hidden border-2 border-indigo-200 dark:border-indigo-500/30 bg-gradient-to-br from-white via-indigo-50/70 to-purple-50/60 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-slate-950/60 shadow-xl dark:shadow-2xl">
+                
+                <!-- Status Tag & Timer -->
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 uppercase tracking-widest">
+                      <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                      </span>
+                      Sedang Praktik
+                    </span>
+
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                      <span id="monitorTimer">00:00</span>
+                    </span>
+                  </div>
+
+                  <!-- NOMOR ANTRIAN SANGAT BESAR -->
+                  <div class="my-6 sm:my-8 text-center sm:text-left">
+                    <div class="text-xs uppercase font-extrabold tracking-widest text-indigo-500 dark:text-indigo-400 mb-1">
+                      Nomor Antrian
+                    </div>
+                    <div id="monitorActiveQueueNum" class="text-6xl sm:text-8xl lg:text-9xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 dark:from-blue-400 dark:via-purple-300 dark:to-pink-400 bg-clip-text text-transparent drop-shadow-sm leading-none">
+                      #--
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Info Siswa -->
+                <div class="space-y-4 pt-4 border-t border-slate-200/50 dark:border-slate-800/80">
+                  <div>
+                    <h3 id="monitorActiveName" class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight">
+                      Belum Ada Siswa Dipanggil
+                    </h3>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2.5">
+                    <div class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm sm:text-base font-semibold flex items-center gap-2">
+                      <i data-lucide="graduation-cap" class="w-4 h-4 text-brand-blue"></i>
+                      <span id="monitorActiveClass">Kelas: --</span>
+                    </div>
+                    <div class="px-4 py-2 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-900 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-sm sm:text-base font-semibold flex items-center gap-2">
+                      <i data-lucide="book-open" class="w-4 h-4"></i>
+                      <span id="monitorActiveTopic">Materi: Menunggu Antrian</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Sesi Kanan/Bawah: DAFTAR MENUNGGU GILIRAN DENGAN TOMBOL CLEAR ANTRIAN -->
+            <div class="lg:col-span-5 flex flex-col">
+              <div class="glass-card rounded-3xl p-6 flex-1 flex flex-col shadow-xl">
+                
+                <!-- Header Kotak Menunggu: Termasuk Tombol "Clear Antrian" -->
+                <div class="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800 gap-2">
+                  <div class="flex items-center gap-2">
+                    <div class="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+                      <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Menunggu Giliran</h3>
+                      <p class="text-xs text-slate-500 dark:text-slate-400" id="monitorWaitingSub">0 siswa dalam antrian</p>
+                    </div>
+                  </div>
+
+                  <!-- Tombol "Clear Antrian" diletakkan langsung di dalam header kotak/kartu Menunggu Giliran -->
+                  <button onclick="openClearAntrianModal()" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                    title="Reset seluruh antrian saat ini">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    <span>Clear Antrian</span>
+                  </button>
+                </div>
+
+                <!-- Scrollable List of Waiting Students -->
+                <div class="mt-4 space-y-3 overflow-y-auto max-h-[500px] pr-1.5" id="monitorWaitingList">
+                  <!-- Populated dynamically via JS -->
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAMPILAN 2: PANEL GURU (TERPROTEKSI LOGIN) -->
+      <!-- ========================================== -->
+      <section id="tab-guru" class="tab-view hidden">
+        <div class="space-y-8">
+          
+          <!-- Guru Header Bar & Admin Info -->
+          <div class="flex flex-wrap items-center justify-between gap-4 glass-card rounded-3xl p-5 sm:p-6">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <i data-lucide="user-check" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Panel Guru Pembimbing</h2>
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    Admin
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                  Login sebagai: <strong id="guruCurrentUsernameLabel" class="text-brand-purple dark:text-purple-400">kien</strong>
+                </p>
+              </div>
+            </div>
+
+            <!-- Top Actions: Pengaturan Akun & Logout -->
+            <div class="flex items-center gap-2.5">
+              <button onclick="openAccountModal()" 
+                class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold hover:border-purple-400 transition-all flex items-center gap-2 shadow-sm">
+                <i data-lucide="key" class="w-4 h-4 text-purple-500"></i>
+                <span>Pengaturan Akun</span>
+              </button>
+              <button onclick="handleLogout()" 
+                class="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                <span>Keluar</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 1: KONTROL ANTRIAN & PENILAIAN SISWA SEDANG MAJU -->
+          <div class="glass-card rounded-3xl p-6 sm:p-8 border-indigo-500/30 shadow-2xl space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                  <i data-lucide="award" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Kontrol Antrian & Penilaian Praktik</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Menilai siswa yang sedang maju dan memanggil giliran berikutnya</p>
+                </div>
+              </div>
+
+              <!-- Recall Sound Button -->
+              <button onclick="recallCurrentStudent()" id="btnRecallVoice"
+                class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 transition-all flex items-center gap-1.5">
+                <i data-lucide="volume-2" class="w-4 h-4"></i>
+                <span>Panggil Ulang Suara</span>
+              </button>
+            </div>
+
+            <!-- Current Active Student Card in Panel Guru -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              <!-- Info Siswa Aktif -->
+              <div class="lg:col-span-5 rounded-2xl p-5 bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 space-y-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Siswa Aktif</span>
+                  <span id="guruActiveBadge" class="px-3 py-1 rounded-full text-xs font-black bg-indigo-600 text-white shadow-sm">
+                    #--
+                  </span>
+                </div>
+                <div>
+                  <div id="guruActiveName" class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                    Belum ada siswa aktif
+                  </div>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                    <span id="guruActiveClass" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Kelas: --</span>
+                    <span id="guruActiveTopic" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300">Materi: --</span>
+                  </div>
+                </div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <i data-lucide="timer" class="w-3.5 h-3.5"></i>
+                  <span>Durasi praktik: <strong id="guruActiveDuration" class="font-mono text-slate-700 dark:text-slate-300">00:00</strong></span>
+                </div>
+              </div>
+
+              <!-- Form Penilaian -->
+              <div class="lg:col-span-7 space-y-4">
+                <form id="guruGradingForm" onsubmit="handleSaveAndNext(event)" class="space-y-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Skor -->
+                    <div>
+                      <label for="gradeScore" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Skor / Nilai (0 - 100) <span class="text-rose-500">*</span>
+                      </label>
+                      <input type="number" id="gradeScore" min="0" max="100" step="0.5" placeholder="Contoh: 88"
+                        class="glass-input w-full px-4 py-3 rounded-xl text-sm font-bold outline-none">
+                    </div>
+
+                    <!-- Status Lulus / Ulang -->
+                    <div>
+                      <label for="gradeStatus" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Status Kelulusan <span class="text-rose-500">*</span>
+                      </label>
+                      <select id="gradeStatus" class="glass-input w-full px-4 py-3 rounded-xl text-sm font-semibold outline-none cursor-pointer">
+                        <option value="Lulus">✅ Lulus</option>
+                        <option value="Ulang">⚠️ Ulang (Remedial)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Catatan Guru -->
+                  <div>
+                    <label for="gradeNotes" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Catatan Evaluasi / Masukan Guru
+                    </label>
+                    <input type="text" id="gradeNotes" placeholder="Contoh: Sangat memahami topologi, pengujian lancar"
+                      class="glass-input w-full px-4 py-3 rounded-xl text-sm outline-none">
+                  </div>
+
+                  <!-- Tombol Simpan & Panggil Berikutnya -->
+                  <div class="pt-2 flex flex-col sm:flex-row gap-3">
+                    <button type="submit" id="btnSimpanPanggil"
+                      class="flex-1 py-3.5 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 active:scale-[0.99] transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 text-sm sm:text-base">
+                      <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                      <span>Simpan & Panggil Berikutnya</span>
+                    </button>
+                    
+                    <button type="button" onclick="callNextOnly()" id="btnPanggilLangsung"
+                      class="py-3.5 px-5 rounded-xl font-semibold text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
+                      <i data-lucide="skip-forward" class="w-4 h-4"></i>
+                      <span>Lewati / Panggil Saja</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Section 2: MANAJEMEN KELAS & MANAJEMEN MATERI -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            
+            <!-- 2. MANAJEMEN KELAS -->
+            <div class="glass-card rounded-3xl p-6 shadow-xl space-y-4">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                  <div class="p-2 rounded-xl bg-blue-500/10 text-brand-blue">
+                    <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Manajemen Kelas</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Otomatis sinkron ke dropdown siswa</p>
+                  </div>
+                </div>
+
+                <!-- Tombol "Clear Semua Kelas" di header kartu dengan modal konfirmasi -->
+                <button onclick="openClearKelasModal()"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                  title="Hapus semua daftar kelas">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  <span>Clear Semua Kelas</span>
+                </button>
+              </div>
+
+              <!-- Form Tambah Kelas -->
+              <form onsubmit="handleAddKelas(event)" class="flex gap-2">
+                <input type="text" id="inputNewKelas" required placeholder="Contoh: XII RPL 1"
+                  class="glass-input flex-1 px-4 py-2.5 rounded-xl text-sm outline-none">
+                <button type="submit"
+                  class="px-4 py-2.5 rounded-xl bg-brand-blue hover:bg-blue-700 text-white text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 shadow-md">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                  <span>Tambah</span>
+                </button>
+              </form>
+
+              <!-- Chips/Badge Daftar Kelas -->
+              <div>
+                <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Daftar Kelas Aktif:</div>
+                <div id="kelasListContainer" class="flex flex-wrap gap-2 min-h-[40px]">
+                  <!-- Chips injected via JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. MANAJEMEN MATERI -->
+            <div class="glass-card rounded-3xl p-6 shadow-xl space-y-4">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                  <div class="p-2 rounded-xl bg-purple-500/10 text-brand-purple">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Manajemen Materi</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Otomatis sinkron ke dropdown siswa</p>
+                  </div>
+                </div>
+
+                <!-- Tombol "Clear Semua Materi" di header kartu dengan modal konfirmasi -->
+                <button onclick="openClearMateriModal()"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                  title="Hapus semua daftar materi">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  <span>Clear Semua Materi</span>
+                </button>
+              </div>
+
+              <!-- Form Tambah Materi -->
+              <form onsubmit="handleAddMateri(event)" class="flex gap-2">
+                <input type="text" id="inputNewMateri" required placeholder="Contoh: Konfigurasi VLAN MikroTik"
+                  class="glass-input flex-1 px-4 py-2.5 rounded-xl text-sm outline-none">
+                <button type="submit"
+                  class="px-4 py-2.5 rounded-xl bg-brand-purple hover:bg-purple-700 text-white text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 shadow-md">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                  <span>Tambah</span>
+                </button>
+              </form>
+
+              <!-- Chips/Badge Daftar Materi -->
+              <div>
+                <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Daftar Materi Aktif:</div>
+                <div id="materiListContainer" class="flex flex-wrap gap-2 min-h-[40px]">
+                  <!-- Chips injected via JS -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Section 3: REKAP NILAI SISWA & TOMBOL DOWNLOAD EXCEL -->
+          <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+                  <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Rekap Nilai Siswa Praktik</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400" id="rekapCountLabel">0 siswa selesai dinilai</p>
+                </div>
+              </div>
+
+              <!-- Action Buttons: Clear Rekap & Download Excel -->
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <!-- Tombol "Clear Rekap Nilai" -->
+                <button onclick="openClearRekapModal()"
+                  class="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                  title="Bersihkan semua data riwayat nilai">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  <span>Clear Rekap Nilai</span>
+                </button>
+
+                <!-- Tombol "Download Excel" Warna Hijau Emerald -->
+                <button onclick="downloadRekapExcel()"
+                  class="px-4 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2 text-xs sm:text-sm">
+                  <i data-lucide="download" class="w-4 h-4"></i>
+                  <span>Download Excel (.xls)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabel Rekap Nilai yang Bisa Di-scroll Horizontal di Mobile -->
+            <div class="overflow-x-auto rounded-2xl border border-slate-200/70 dark:border-slate-800">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr class="bg-slate-100/75 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/70 dark:border-slate-800">
+                    <th class="py-3.5 px-4 whitespace-nowrap">No</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap">No. Antrian</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap">Nama Siswa</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap">Kelas</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap">Materi</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap">Nilai</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap">Status</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap min-w-[160px]">Catatan</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap">Waktu Selesai</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="rekapTableBody" class="divide-y divide-slate-200/60 dark:divide-slate-800/80">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER MINIMALIS -->
+    <footer class="border-t border-slate-200/70 dark:border-slate-800/70 py-4 px-6 text-center text-xs text-slate-500 dark:text-slate-400">
+      Sistem Antrian Praktik Siswa &bull; SPA Modern Glassmorphism &bull; LocalStorage State
+    </footer>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 1: LOGIN GURU (Hanya Form, Tanpa Register, Tanpa Hint) -->
+  <!-- ======================================================== -->
+  <div id="modalLoginGuru" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+    <div class="w-full max-w-md glass-card bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 relative transform transition-transform scale-95 duration-300" id="modalLoginCard">
+      
+      <!-- Close button -->
+      <button onclick="closeLoginModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="mb-6 text-center">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-brand-blue to-brand-purple flex items-center justify-center text-white mb-3 shadow-lg shadow-purple-500/30">
+          <i data-lucide="lock" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Login Admin Guru</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Masukkan kredensial akun untuk mengakses panel kontrol.</p>
+      </div>
+
+      <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label for="loginUsername" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Username</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </span>
+            <input type="text" id="loginUsername" required autocomplete="username"
+              class="glass-input w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label for="loginPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="key" class="w-4 h-4"></i>
+            </span>
+            <input type="password" id="loginPassword" required autocomplete="current-password"
+              class="glass-input w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none">
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full mt-2 py-3.5 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-brand-blue to-brand-purple hover:opacity-95 active:scale-[0.99] transition-all shadow-lg shadow-indigo-500/30 text-sm">
+          Masuk ke Panel Guru
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 2: TIKET KONFIRMASI NOMOR ANTRIAN SISWA            -->
+  <!-- ======================================================== -->
+  <div id="modalTicketConfirmation" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+    <div class="w-full max-w-sm glass-card bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 text-center shadow-2xl border border-indigo-500/40 relative transform transition-transform scale-95 duration-300" id="modalTicketCard">
+      
+      <div class="w-14 h-14 mx-auto rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center mb-3">
+        <i data-lucide="check" class="w-7 h-7"></i>
+      </div>
+
+      <span class="text-xs font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400">Pendaftaran Berhasil</span>
+      <h3 class="text-base font-semibold text-slate-700 dark:text-slate-300 mt-1">Nomor Antrian Anda:</h3>
+
+      <!-- Nomor Antrian Highlight -->
+      <div id="modalTicketNumber" class="text-5xl sm:text-6xl font-black my-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-300 dark:to-purple-400 bg-clip-text text-transparent">
+        #A-01
+      </div>
+
+      <div class="bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl p-4 text-xs space-y-1.5 text-left mb-5">
+        <div><strong class="text-slate-500 dark:text-slate-400">Nama:</strong> <span id="modalTicketName" class="font-bold text-slate-900 dark:text-white">-</span></div>
+        <div><strong class="text-slate-500 dark:text-slate-400">Kelas:</strong> <span id="modalTicketClass" class="text-slate-700 dark:text-slate-200">-</span></div>
+        <div><strong class="text-slate-500 dark:text-slate-400">Materi:</strong> <span id="modalTicketTopic" class="text-slate-700 dark:text-slate-200">-</span></div>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="closeTicketModal()" class="flex-1 py-3 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+          Tutup
+        </button>
+        <button onclick="goToMonitorFromTicket()" class="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-brand-blue to-brand-purple hover:opacity-95 text-xs shadow-md">
+          Lihat di Layar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 3: PENGATURAN AKUN GURU (Ubah Username & Password) -->
+  <!-- ======================================================== -->
+  <div id="modalAccountSettings" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+    <div class="w-full max-w-md glass-card bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 relative transform transition-transform scale-95 duration-300" id="modalAccountCard">
+      
+      <button onclick="closeAccountModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="mb-5 flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-purple-500/10 text-brand-purple">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-900 dark:text-white">Pengaturan Akun Guru</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Perbarui username & password admin Anda</p>
+        </div>
+      </div>
+
+      <form onsubmit="handleAccountUpdate(event)" class="space-y-4">
+        <div>
+          <label for="accNewUsername" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Username Baru</label>
+          <input type="text" id="accNewUsername" required class="glass-input w-full px-4 py-3 rounded-xl text-sm outline-none">
+        </div>
+
+        <div>
+          <label for="accNewPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
+          <input type="password" id="accNewPassword" required minlength="4" class="glass-input w-full px-4 py-3 rounded-xl text-sm outline-none">
+        </div>
+
+        <div>
+          <label for="accConfirmPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Konfirmasi Password Baru</label>
+          <input type="password" id="accConfirmPassword" required minlength="4" class="glass-input w-full px-4 py-3 rounded-xl text-sm outline-none">
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="closeAccountModal()" class="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+            Batal
+          </button>
+          <button type="submit" class="flex-1 py-3 rounded-xl font-bold text-white bg-brand-purple hover:bg-purple-700 text-xs shadow-md transition-all">
+            Simpan Perubahan
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 4: KONFIRMASI CLEAR DATA UMUM (Clear Antrian/Kelas/Materi) -->
+  <!-- ======================================================== -->
+  <div id="modalConfirmAction" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+    <div class="w-full max-w-sm glass-card bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 text-center shadow-2xl border border-rose-500/30 relative transform transition-transform scale-95 duration-300" id="modalConfirmCard">
+      
+      <div class="w-12 h-12 mx-auto rounded-full bg-rose-500/15 text-rose-500 flex items-center justify-center mb-3">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+
+      <h3 id="confirmModalTitle" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+        Konfirmasi Hapus
+      </h3>
+      <p id="confirmModalDesc" class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+        Apakah Anda yakin ingin melanjutkan tindakan ini?
+      </p>
+
+      <div class="mt-6 flex gap-2.5">
+        <button onclick="closeConfirmModal()" class="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+          Batal
+        </button>
+        <button id="btnConfirmExecution" class="flex-1 py-2.5 px-4 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 text-xs shadow-md transition-all">
+          Ya, Hapus
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- TOAST NOTIFICATION: DI BAWAH LAYAR (BOTTOM-RIGHT / BOTTOM-CENTER) -->
+  <!-- ======================================================== -->
+  <div id="toastContainer" class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-6 z-50 flex flex-col gap-2 pointer-events-none max-w-sm sm:max-w-md w-full">
+    <!-- Toasts injected dynamically with animate-toast -->
+  </div>
+
+  <!-- JAVASCRIPT: LOGIKA SPA, REAL-TIME SQLITE DATABASE SYNC, & WEB SPEECH -->
+  <script>
+    // ==========================================
+    // 1. STATE MANAGEMENT (SQLITE DATABASE AS SOURCE OF TRUTH)
+    // ==========================================
+    const STORAGE_KEYS = {
+      AUTH_USER: 'antrian_admin_auth',
+      AUTH_TOKEN: 'antrian_admin_token',
+      THEME: 'antrian_theme_mode'
+    };
+
+    function authFetch(url, options = {}) {
+      const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || '';
+      const headers = { ...(options.headers || {}) };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      return fetch(url, { ...options, headers });
+    }
+
+    let appState = {
+      credentials: { username: 'kien' },
+      classes: [],
+      topics: [],
+      queue: [],
+      currentStudent: null,
+      history: [],
+      isLoggedIn: sessionStorage.getItem(STORAGE_KEYS.AUTH_USER) === 'true',
+      currentTab: 'tab-siswa',
+      lastCallTimestamp: 0,
+      isInitialLoaded: false
+    };
+
+    // ==========================================
+    // 2. THEME ENGINE (Dark / Light Mode)
+    // ==========================================
+    function applyTheme(isDark) {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem(STORAGE_KEYS.THEME, 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem(STORAGE_KEYS.THEME, 'light');
+      }
+      updateThemeToggleUI(isDark);
+    }
+
+    function updateThemeToggleUI(isDark) {
+      const iconSpan = document.getElementById('themeToggleIcon');
+      const btn = document.getElementById('btnThemeToggle');
+      if (!iconSpan) return;
+      if (isDark) {
+        iconSpan.innerHTML = `<i data-lucide="sun" class="w-4 h-4 text-amber-400"></i>`;
+        if (btn) btn.setAttribute('title', 'Ganti ke Mode Terang (Light Mode)');
+      } else {
+        iconSpan.innerHTML = `<i data-lucide="moon" class="w-4 h-4 text-indigo-600"></i>`;
+        if (btn) btn.setAttribute('title', 'Ganti ke Mode Gelap (Dark Mode)');
+      }
+      lucide.createIcons();
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+      const isDark = savedTheme !== 'light';
+      applyTheme(isDark);
+    }
+
+    function toggleDarkMode() {
+      const isCurrentlyDark = document.documentElement.classList.contains('dark');
+      const nextIsDark = !isCurrentlyDark;
+      applyTheme(nextIsDark);
+      showToast(nextIsDark ? 'Mode Gelap (Dark Mode) aktif' : 'Mode Terang (Light Mode) aktif', 'info');
+    }
+
+    // ==========================================
+    // 3. TOAST NOTIFICATION (Muncul di Bawah)
+    // ==========================================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      const isSuccess = type === 'success';
+      const isError = type === 'error';
+      const bgClasses = isSuccess 
+        ? 'bg-emerald-600 text-white shadow-emerald-500/30'
+        : (isError 
+            ? 'bg-rose-600 text-white shadow-rose-500/30' 
+            : 'bg-indigo-600 text-white shadow-indigo-500/30');
+
+      const iconName = isSuccess ? 'check-circle' : (isError ? 'alert-triangle' : 'info');
+
+      toast.className = `pointer-events-auto p-4 rounded-2xl shadow-xl flex items-center gap-3 text-xs sm:text-sm font-semibold animate-toast ${bgClasses}`;
+      toast.innerHTML = `
+        <i data-lucide="${iconName}" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="flex-1 leading-snug">${escapeHtml(message)}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // ==========================================
+    // 4. DATABASE REAL-TIME SYNCHRONIZATION
+    // ==========================================
+    async function syncDatabase() {
+      try {
+        const res = await fetch('/api/bootstrap');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success) return;
+
+        appState.classes = data.classes || [];
+        appState.topics = data.topics || [];
+        appState.queue = data.queue || [];
+        appState.currentStudent = data.current_student || null;
+        appState.history = data.history || [];
+        if (data.admin && data.admin.username) {
+          appState.credentials.username = data.admin.username;
+          const userLabel = document.getElementById('guruCurrentUsernameLabel');
+          if (userLabel) userLabel.textContent = data.admin.username;
+        }
+
+        // Check for cross-device sound call event
+        if (data.last_call_event && data.last_call_event.call_timestamp) {
+          const ts = data.last_call_event.call_timestamp;
+          if (appState.lastCallTimestamp === 0) {
+            appState.lastCallTimestamp = ts;
+          } else if (ts > appState.lastCallTimestamp) {
+            appState.lastCallTimestamp = ts;
+            // Trigger TTS speech on any listening display
+            announceStudentVoice(data.last_call_event.code, data.last_call_event.nama);
+          }
+        }
+
+        renderAllViews();
+        appState.isInitialLoaded = true;
+      } catch (err) {
+        console.warn('Sync with database error:', err);
+      }
+    }
+
+    // ==========================================
+    // 5. NAVIGATION & TAB SWITCHING
+    // ==========================================
+    function switchTab(tabId) {
+      if (tabId === 'tab-guru' && !appState.isLoggedIn) {
+        openLoginModal();
+        return;
+      }
+
+      appState.currentTab = tabId;
+
+      document.querySelectorAll('.tab-view').forEach(view => {
+        view.classList.add('hidden');
+      });
+      const activeView = document.getElementById(tabId);
+      if (activeView) activeView.classList.remove('hidden');
+
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'dark:bg-slate-900', 'text-brand-purple', 'dark:text-purple-400', 'shadow-sm');
+        btn.classList.add('text-slate-600', 'dark:text-slate-400');
+      });
+
+      const activeBtn = document.getElementById(`nav-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-600', 'dark:text-slate-400');
+        activeBtn.classList.add('bg-white', 'dark:bg-slate-900', 'text-brand-purple', 'dark:text-purple-400', 'shadow-sm');
+      }
+
+      renderAllViews();
+    }
+
+    // ==========================================
+    // 6. AUTHENTICATION (Login / Logout Guru)
+    // ==========================================
+    function renderAuthHeader() {
+      const area = document.getElementById('authHeaderArea');
+      if (appState.isLoggedIn) {
+        area.innerHTML = `
+          <button onclick="handleLogout()" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/40 hover:bg-rose-100 transition-all flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Keluar</span>
+          </button>
+        `;
+      } else {
+        area.innerHTML = `
+          <button onclick="openLoginModal()" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-brand-blue to-brand-purple hover:opacity-95 transition-all flex items-center gap-1.5 shadow-md shadow-indigo-500/25">
+            <i data-lucide="lock" class="w-4 h-4"></i>
+            <span>Login Guru</span>
+          </button>
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    function openLoginModal() {
+      const modal = document.getElementById('modalLoginGuru');
+      const card = document.getElementById('modalLoginCard');
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        card.classList.remove('scale-95');
+      }, 10);
+      document.getElementById('loginUsername').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginUsername').focus();
+      lucide.createIcons();
+    }
+
+    function closeLoginModal() {
+      const modal = document.getElementById('modalLoginGuru');
+      const card = document.getElementById('modalLoginCard');
+      modal.classList.add('opacity-0');
+      card.classList.add('scale-95');
+      setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const u = document.getElementById('loginUsername').value.trim();
+      const p = document.getElementById('loginPassword').value;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+          appState.isLoggedIn = true;
+          sessionStorage.setItem(STORAGE_KEYS.AUTH_USER, 'true');
+          if (result.token) {
+            sessionStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, result.token);
+          }
+          closeLoginModal();
+          renderAuthHeader();
+          showToast('Login berhasil! Selamat datang di Panel Guru.', 'success');
+          switchTab('tab-guru');
+          syncDatabase();
+        } else {
+          showToast(result.message || 'Username atau password salah!', 'error');
+        }
+      } catch (err) {
+        showToast('Koneksi ke server database gagal.', 'error');
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await authFetch('/api/auth/logout', { method: 'POST' });
+      } catch (e) {}
+      appState.isLoggedIn = false;
+      sessionStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+      sessionStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      renderAuthHeader();
+      showToast('Anda telah keluar dari Panel Guru.', 'info');
+      switchTab('tab-siswa');
+    }
+
+    // ==========================================
+    // 7. PENGATURAN AKUN GURU (Database Update)
+    // ==========================================
+    function openAccountModal() {
+      const modal = document.getElementById('modalAccountSettings');
+      const card = document.getElementById('modalAccountCard');
+      document.getElementById('accNewUsername').value = appState.credentials.username;
+      document.getElementById('accNewPassword').value = '';
+      document.getElementById('accConfirmPassword').value = '';
+
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        card.classList.remove('scale-95');
+      }, 10);
+      lucide.createIcons();
+    }
+
+    function closeAccountModal() {
+      const modal = document.getElementById('modalAccountSettings');
+      const card = document.getElementById('modalAccountCard');
+      modal.classList.add('opacity-0');
+      card.classList.add('scale-95');
+      setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    async function handleAccountUpdate(e) {
+      e.preventDefault();
+      const newU = document.getElementById('accNewUsername').value.trim();
+      const newP = document.getElementById('accNewPassword').value;
+      const confP = document.getElementById('accConfirmPassword').value;
+
+      if (!newU) {
+        showToast('Username tidak boleh kosong!', 'error');
+        return;
+      }
+      if (newP !== confP) {
+        showToast('Konfirmasi password tidak cocok!', 'error');
+        return;
+      }
+
+      try {
+        const res = await authFetch('/api/auth/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: newU, password: newP })
+        });
+        const result = await res.json();
+        if (result.success) {
+          appState.credentials.username = newU;
+          document.getElementById('guruCurrentUsernameLabel').textContent = newU;
+          closeAccountModal();
+          showToast('Kredensial akun guru berhasil disimpan ke database!', 'success');
+        } else {
+          showToast(result.message || 'Gagal memperbarui akun', 'error');
+        }
+      } catch (err) {
+        showToast('Gagal menghubungi server database.', 'error');
+      }
+    }
+
+    // ==========================================
+    // 8. MANAJEMEN KELAS & MATERI (Database Sync)
+    // ==========================================
+    let lastRenderedClassesJson = '';
+    let lastRenderedTopicsJson = '';
+
+    function renderClassAndTopicOptions() {
+      const currentClassesJson = JSON.stringify(appState.classes);
+      const currentTopicsJson = JSON.stringify(appState.topics);
+
+      // Only update dropdowns and chips if data has actually changed
+      if (currentClassesJson !== lastRenderedClassesJson || !appState.isInitialLoaded) {
+        lastRenderedClassesJson = currentClassesJson;
+        // 1. Dropdown Siswa: Kelas
+        const selectKelas = document.getElementById('regKelas');
+        const currentSelectedKelas = selectKelas.value;
+        const emptyKelasNotice = document.getElementById('regKelasEmptyNotice');
+        if (appState.classes.length === 0) {
+          selectKelas.innerHTML = `<option value="">-- Tidak ada kelas tersedia --</option>`;
+          emptyKelasNotice.classList.remove('hidden');
+        } else {
+          emptyKelasNotice.classList.add('hidden');
+          selectKelas.innerHTML = `<option value="">-- Pilih Kelas / Jurusan --</option>` + 
+            appState.classes.map(k => `<option value="${escapeHtml(k)}" ${k === currentSelectedKelas ? 'selected' : ''}>${escapeHtml(k)}</option>`).join('');
+        }
+
+        // 3. Panel Guru: Chips Kelas
+        const kelasChips = document.getElementById('kelasListContainer');
+        if (appState.classes.length === 0) {
+          kelasChips.innerHTML = `<span class="text-xs text-slate-400 italic">Belum ada kelas di database.</span>`;
+        } else {
+          kelasChips.innerHTML = appState.classes.map((k, idx) => `
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-all">
+              <span>${escapeHtml(k)}</span>
+              <button type="button" onclick="deleteSingleKelas('${escapeHtml(k)}')" class="text-blue-500 hover:text-rose-500 transition-colors ml-0.5" title="Hapus kelas ini">
+                &times;
+              </button>
+            </span>
+          `).join('');
+        }
+      }
+
+      if (currentTopicsJson !== lastRenderedTopicsJson || !appState.isInitialLoaded) {
+        lastRenderedTopicsJson = currentTopicsJson;
+        // 2. Dropdown Siswa: Materi
+        const selectMateri = document.getElementById('regMateri');
+        const currentSelectedMateri = selectMateri.value;
+        const emptyMateriNotice = document.getElementById('regMateriEmptyNotice');
+        if (appState.topics.length === 0) {
+          selectMateri.innerHTML = `<option value="">-- Tidak ada materi tersedia --</option>`;
+          emptyMateriNotice.classList.remove('hidden');
+        } else {
+          emptyMateriNotice.classList.add('hidden');
+          selectMateri.innerHTML = `<option value="">-- Pilih Materi Praktik --</option>` + 
+            appState.topics.map(m => `<option value="${escapeHtml(m)}" ${m === currentSelectedMateri ? 'selected' : ''}>${escapeHtml(m)}</option>`).join('');
+        }
+
+        // 4. Panel Guru: Chips Materi
+        const materiChips = document.getElementById('materiListContainer');
+        if (appState.topics.length === 0) {
+          materiChips.innerHTML = `<span class="text-xs text-slate-400 italic">Belum ada materi di database.</span>`;
+        } else {
+          materiChips.innerHTML = appState.topics.map((m, idx) => `
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 transition-all">
+              <span>${escapeHtml(m)}</span>
+              <button type="button" onclick="deleteSingleMateri('${escapeHtml(m)}')" class="text-purple-500 hover:text-rose-500 transition-colors ml-0.5" title="Hapus materi ini">
+                &times;
+              </button>
+            </span>
+          `).join('');
+        }
+      }
+    }
+
+    async function handleAddKelas(e) {
+      e.preventDefault();
+      const val = document.getElementById('inputNewKelas').value.trim();
+      if (!val) return;
+
+      try {
+        const res = await authFetch('/api/classes/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: val })
+        });
+        const result = await res.json();
+        if (result.success) {
+          document.getElementById('inputNewKelas').value = '';
+          showToast(result.message, 'success');
+          syncDatabase();
+        } else {
+          showToast(result.message, 'error');
+        }
+      } catch (err) {
+        showToast('Gagal menghubungi database.', 'error');
+      }
+    }
+
+    async function deleteSingleKelas(name) {
+      try {
+        const res = await authFetch('/api/classes/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(result.message, 'info');
+          syncDatabase();
+        }
+      } catch (err) {
+        showToast('Gagal menghapus kelas dari database.', 'error');
+      }
+    }
+
+    async function handleAddMateri(e) {
+      e.preventDefault();
+      const val = document.getElementById('inputNewMateri').value.trim();
+      if (!val) return;
+
+      try {
+        const res = await authFetch('/api/topics/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: val })
+        });
+        const result = await res.json();
+        if (result.success) {
+          document.getElementById('inputNewMateri').value = '';
+          showToast(result.message, 'success');
+          syncDatabase();
+        } else {
+          showToast(result.message, 'error');
+        }
+      } catch (err) {
+        showToast('Gagal menghubungi database.', 'error');
+      }
+    }
+
+    async function deleteSingleMateri(title) {
+      try {
+        const res = await authFetch('/api/topics/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(result.message, 'info');
+          syncDatabase();
+        }
+      } catch (err) {
+        showToast('Gagal menghapus materi dari database.', 'error');
+      }
+    }
+
+    // Modal Konfirmasi Clear
+    let currentConfirmAction = null;
+
+    function openConfirmModal(title, desc, action) {
+      document.getElementById('confirmModalTitle').textContent = title;
+      document.getElementById('confirmModalDesc').textContent = desc;
+      currentConfirmAction = action;
+
+      const modal = document.getElementById('modalConfirmAction');
+      const card = document.getElementById('modalConfirmCard');
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        card.classList.remove('scale-95');
+      }, 10);
+
+      document.getElementById('btnConfirmExecution').onclick = () => {
+        if (currentConfirmAction) currentConfirmAction();
+        closeConfirmModal();
+      };
+      lucide.createIcons();
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('modalConfirmAction');
+      const card = document.getElementById('modalConfirmCard');
+      modal.classList.add('opacity-0');
+      card.classList.add('scale-95');
+      setTimeout(() => modal.classList.add('hidden'), 300);
+      currentConfirmAction = null;
+    }
+
+    function openClearKelasModal() {
+      openConfirmModal(
+        'Clear Semua Kelas di Database?',
+        'Tindakan ini akan mengosongkan seluruh daftar kelas di database. Pilihan di formulir pendaftaran siswa juga akan hilang.',
+        async () => {
+          try {
+            const res = await authFetch('/api/classes/clear', { method: 'POST' });
+            const data = await res.json();
+            showToast(data.message, 'info');
+            syncDatabase();
+          } catch (e) {
+            showToast('Gagal clear kelas dari database.', 'error');
+          }
+        }
+      );
+    }
+
+    function openClearMateriModal() {
+      openConfirmModal(
+        'Clear Semua Materi di Database?',
+        'Tindakan ini akan mengosongkan seluruh daftar materi praktik di database. Pilihan di formulir pendaftaran siswa juga akan hilang.',
+        async () => {
+          try {
+            const res = await authFetch('/api/topics/clear', { method: 'POST' });
+            const data = await res.json();
+            showToast(data.message, 'info');
+            syncDatabase();
+          } catch (e) {
+            showToast('Gagal clear materi dari database.', 'error');
+          }
+        }
+      );
+    }
+
+    function openClearAntrianModal() {
+      openConfirmModal(
+        'Clear Seluruh Antrian di Database?',
+        'Tindakan ini akan mereset antrian menunggu dan siswa yang sedang aktif di database. Riwayat nilai siswa yang sudah selesai tetap tersimpan.',
+        async () => {
+          try {
+            const res = await authFetch('/api/queue/clear', { method: 'POST' });
+            const data = await res.json();
+            showToast(data.message, 'info');
+            syncDatabase();
+          } catch (e) {
+            showToast('Gagal membersihkan antrian di database.', 'error');
+          }
+        }
+      );
+    }
+
+    function openClearRekapModal() {
+      if (appState.history.length === 0) {
+        showToast('Tabel rekap nilai sudah kosong!', 'info');
+        return;
+      }
+      openConfirmModal(
+        'Clear Semua Rekap Nilai di Database?',
+        'Tindakan ini akan menghapus permanen seluruh riwayat nilai siswa yang sudah selesai di database. Data yang dihapus tidak dapat dipulihkan.',
+        async () => {
+          try {
+            const res = await authFetch('/api/history/clear', { method: 'POST' });
+            const data = await res.json();
+            showToast(data.message, 'info');
+            syncDatabase();
+          } catch (e) {
+            showToast('Gagal membersihkan rekap nilai dari database.', 'error');
+          }
+        }
+      );
+    }
+
+    // ==========================================
+    // 9. REGISTRATION & TICKET CONFIRMATION
+    // ==========================================
+    async function handleStudentRegister(e) {
+      e.preventDefault();
+      const nama = document.getElementById('regNama').value.trim();
+      const kelas = document.getElementById('regKelas').value;
+      const materi = document.getElementById('regMateri').value;
+      const submitBtn = document.getElementById('btnSubmitDaftar');
+
+      if (!nama || !kelas || !materi) {
+        showToast('Mohon lengkapi semua isian formulir!', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nama, kelas, materi })
+        });
+        const result = await res.json();
+
+        if (result.success && result.student) {
+          document.getElementById('studentRegisterForm').reset();
+
+          // Show Confirmation Modal
+          document.getElementById('modalTicketNumber').textContent = result.student.code;
+          document.getElementById('modalTicketName').textContent = result.student.nama;
+          document.getElementById('modalTicketClass').textContent = result.student.kelas;
+          document.getElementById('modalTicketTopic').textContent = result.student.materi;
+
+          const modal = document.getElementById('modalTicketConfirmation');
+          const card = document.getElementById('modalTicketCard');
+          modal.classList.remove('hidden');
+          setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            card.classList.remove('scale-95');
+          }, 10);
+          lucide.createIcons();
+
+          showToast(`Nomor antrian ${result.student.code} berhasil disimpan ke database!`, 'success');
+          syncDatabase();
+        } else {
+          showToast(result.message || 'Gagal mendaftar', 'error');
+        }
+      } catch (err) {
+        showToast('Gagal menghubungi database.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    function closeTicketModal() {
+      const modal = document.getElementById('modalTicketConfirmation');
+      const card = document.getElementById('modalTicketCard');
+      modal.classList.add('opacity-0');
+      card.classList.add('scale-95');
+      setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    function goToMonitorFromTicket() {
+      closeTicketModal();
+      switchTab('tab-antrian');
+    }
+
+    // ==========================================
+    // 10. WEB SPEECH SYNTHESIS (TTS SUARA PANGGILAN)
+    // ==========================================
+    function announceStudentVoice(code, nama) {
+      if (!('speechSynthesis' in window)) return;
+
+      window.speechSynthesis.cancel();
+
+      const cleanCode = code.replace('#', '').replace('-', ' ');
+      const speechText = `Panggilan antrian nomor ${cleanCode}, atas nama ${nama}, silakan maju.`;
+
+      const utterance = new SpeechSynthesisUtterance(speechText);
+      utterance.lang = 'id-ID';
+      utterance.rate = 0.95;
+      utterance.pitch = 1.05;
+
+      const voices = window.speechSynthesis.getVoices();
+      const idVoice = voices.find(v => v.lang && (v.lang.includes('id') || v.lang.includes('ID')));
+      if (idVoice) utterance.voice = idVoice;
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    async function recallCurrentStudent() {
+      if (!appState.currentStudent) {
+        showToast('Tidak ada siswa aktif untuk dipanggil ulang!', 'error');
+        return;
+      }
+      try {
+        const res = await authFetch('/api/queue/recall', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'info');
+          announceStudentVoice(appState.currentStudent.code, appState.currentStudent.nama);
+        }
+      } catch (err) {
+        showToast('Gagal mengirimkan panggilan ulang.', 'error');
+      }
+    }
+
+    // ==========================================
+    // 11. KONTROL ANTRIAN & PENILAIAN (Database)
+    // ==========================================
+    async function callNextStudentInternal() {
+      try {
+        const res = await authFetch('/api/queue/call-next', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ score: null, skip_current: false })
+        });
+        const result = await res.json();
+        if (result.student) {
+          showToast(`Memanggil ${result.student.code} - ${result.student.nama}`, 'success');
+          announceStudentVoice(result.student.code, result.student.nama);
+        } else {
+          showToast(result.message || 'Antrian sudah habis.', 'info');
+        }
+        syncDatabase();
+      } catch (err) {
+        showToast('Gagal memanggil antrian dari database.', 'error');
+      }
+    }
+
+    async function handleSaveAndNext(e) {
+      e.preventDefault();
+      if (!appState.currentStudent) {
+        callNextStudentInternal();
+        return;
+      }
+
+      const score = document.getElementById('gradeScore').value;
+      const status = document.getElementById('gradeStatus').value;
+      const notes = document.getElementById('gradeNotes').value.trim();
+
+      if (score === '') {
+        showToast('Harap masukkan nilai siswa sebelum menyimpan!', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSimpanPanggil');
+      btn.disabled = true;
+
+      try {
+        const res = await authFetch('/api/queue/call-next', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ score, status, notes, skip_current: false })
+        });
+        const result = await res.json();
+
+        // Reset grading fields
+        document.getElementById('gradeScore').value = '';
+        document.getElementById('gradeNotes').value = '';
+
+        showToast('Nilai berhasil disimpan ke database!', 'success');
+        if (result.student) {
+          announceStudentVoice(result.student.code, result.student.nama);
+        }
+        syncDatabase();
+      } catch (err) {
+        showToast('Gagal menyimpan nilai ke database.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function callNextOnly() {
+      try {
+        const res = await authFetch('/api/queue/call-next', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ skip_current: true })
+        });
+        const result = await res.json();
+        showToast('Siswa sebelumnya dilewati.', 'info');
+        if (result.student) {
+          announceStudentVoice(result.student.code, result.student.nama);
+        }
+        syncDatabase();
+      } catch (err) {
+        showToast('Gagal menghubungi database.', 'error');
+      }
+    }
+
+    async function deleteHistoryItem(id) {
+      if (confirm('Hapus baris rekap nilai ini dari database?')) {
+        try {
+          const res = await authFetch('/api/history/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          });
+          const result = await res.json();
+          if (result.success) {
+            showToast(result.message, 'info');
+            syncDatabase();
+          }
+        } catch (err) {
+          showToast('Gagal menghapus riwayat dari database.', 'error');
+        }
+      }
+    }
+
+    // ==========================================
+    // 12. DOWNLOAD EXCEL (.xls LANGSUNG DARI DATABASE)
+    // ==========================================
+    function downloadRekapExcel() {
+      if (appState.history.length === 0) {
+        showToast('Belum ada data rekap nilai di database untuk diunduh!', 'error');
+        return;
+      }
+      const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || '';
+      showToast('Mengunduh file Excel rekap nilai...', 'info');
+      window.location.href = '/api/export-excel?token=' + encodeURIComponent(token);
+    }
+
+    // ==========================================
+    // 13. RENDERERS & LIVE COUNTERS
+    // ==========================================
+    function renderRekapTable() {
+      const tbody = document.getElementById('rekapTableBody');
+      document.getElementById('rekapCountLabel').textContent = `${appState.history.length} siswa selesai dinilai`;
+
+      if (appState.history.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" class="py-8 text-center text-slate-400 italic">
+              Belum ada siswa yang selesai dinilai di database.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = appState.history.map((row, idx) => {
+        const isLulus = row.status === 'Lulus';
+        const badgeClass = isLulus 
+          ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+          : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800';
+
+        return `
+          <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+            <td class="py-3 px-4 font-mono text-slate-500">${idx + 1}</td>
+            <td class="py-3 px-4 font-bold text-brand-purple dark:text-purple-400 font-mono">${row.code}</td>
+            <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">${escapeHtml(row.nama)}</td>
+            <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(row.kelas)}</td>
+            <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(row.materi)}</td>
+            <td class="py-3 px-4 font-black text-sm text-slate-900 dark:text-white">${row.nilai !== null ? row.nilai : '-'}</td>
+            <td class="py-3 px-4">
+              <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${badgeClass}">
+                ${row.status}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">${escapeHtml(row.catatan || '-')}</td>
+            <td class="py-3 px-4 font-mono text-xs text-slate-500">${row.completedAt || '-'}</td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="deleteHistoryItem(${row.id})" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors" title="Hapus dari database">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function renderMonitorWaitingList() {
+      const container = document.getElementById('monitorWaitingList');
+      document.getElementById('monitorWaitingSub').textContent = `${appState.queue.length} siswa dalam antrian`;
+
+      if (appState.queue.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center text-slate-400">
+            <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+            <p class="text-sm font-semibold">Tidak ada antrian menunggu</p>
+            <p class="text-xs text-slate-500 mt-0.5">Siswa baru dapat mendaftar lewat Form Daftar</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = appState.queue.map((student, idx) => {
+        const isNext = idx === 0;
+
+        // Lencana status di kanan: Siap Maju untuk nomor 1, dan keterangan giliran untuk nomor berikutnya
+        const badgeHighlight = isNext
+          ? `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30 animate-pulse">
+               <span class="w-2 h-2 rounded-full bg-white"></span>
+               Siap Maju
+             </span>`
+          : `<span class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+               Giliran ke-${idx + 1}
+             </span>`;
+
+        // Card styling: Kontras tinggi di Dark Mode & Light Mode
+        const borderCard = isNext
+          ? 'border-2 border-emerald-400 dark:border-emerald-500/50 bg-emerald-50/90 dark:bg-emerald-950/30 shadow-md shadow-emerald-500/10'
+          : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm';
+
+        return `
+          <div class="p-3.5 sm:p-4 rounded-2xl ${borderCard} flex items-center justify-between gap-3 sm:gap-4 transition-all hover:scale-[1.01]">
+            <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+              <!-- Kotak Nomor Antrian: Lebar, Menonjol, dan Tidak Terpotong/Wrapping -->
+              <div class="flex-shrink-0 min-w-[76px] sm:min-w-[86px] px-3 py-2 rounded-xl bg-gradient-to-br from-indigo-500/15 via-purple-500/15 to-blue-500/15 border border-indigo-500/30 dark:border-indigo-500/40 text-center flex flex-col items-center justify-center shadow-sm">
+                <span class="text-[9px] uppercase font-bold tracking-widest text-indigo-600 dark:text-indigo-400 leading-none mb-1">Antrian</span>
+                <span class="font-black font-mono text-lg sm:text-2xl text-brand-purple dark:text-purple-300 leading-none tracking-tight">${student.code}</span>
+              </div>
+
+              <!-- Detail Siswa -->
+              <div class="min-w-0">
+                <div class="font-bold text-sm sm:text-base text-slate-900 dark:text-white leading-snug truncate">
+                  ${escapeHtml(student.nama)}
+                </div>
+                <div class="text-xs text-slate-600 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-1.5">
+                  <span class="font-semibold text-brand-blue dark:text-blue-400">${escapeHtml(student.kelas)}</span>
+                  <span>&bull;</span>
+                  <span class="truncate">${escapeHtml(student.materi)}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lencana Urutan Giliran -->
+            <div class="flex-shrink-0">
+              ${badgeHighlight}
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function renderAllViews() {
+      renderClassAndTopicOptions();
+      renderAuthHeader();
+
+      const countWaiting = appState.queue.length;
+      const countCompleted = appState.history.length;
+      document.getElementById('statWaitingSiswa').textContent = countWaiting;
+      document.getElementById('statCompletedSiswa').textContent = countCompleted;
+
+      const cur = appState.currentStudent;
+
+      // Mini in Form Siswa
+      if (cur) {
+        document.getElementById('activeBadgeLiveMini').textContent = cur.code;
+        document.getElementById('activeMiniName').textContent = cur.nama;
+        document.getElementById('activeMiniTopic').textContent = `${cur.kelas} • ${cur.materi}`;
+      } else {
+        document.getElementById('activeBadgeLiveMini').textContent = '#--';
+        document.getElementById('activeMiniName').textContent = 'Belum ada siswa aktif';
+        document.getElementById('activeMiniTopic').textContent = 'Menunggu guru memanggil giliran';
+      }
+
+      // Monitor Screen
+      if (cur) {
+        document.getElementById('monitorActiveQueueNum').textContent = cur.code;
+        document.getElementById('monitorActiveName').textContent = cur.nama;
+        document.getElementById('monitorActiveClass').textContent = `Kelas: ${cur.kelas}`;
+        document.getElementById('monitorActiveTopic').textContent = `Materi: ${cur.materi}`;
+      } else {
+        document.getElementById('monitorActiveQueueNum').textContent = '#--';
+        document.getElementById('monitorActiveName').textContent = 'Belum Ada Siswa Dipanggil';
+        document.getElementById('monitorActiveClass').textContent = 'Kelas: --';
+        document.getElementById('monitorActiveTopic').textContent = 'Materi: Menunggu Antrian';
+      }
+
+      // Panel Guru Active Card
+      if (cur) {
+        document.getElementById('guruActiveBadge').textContent = cur.code;
+        document.getElementById('guruActiveName').textContent = cur.nama;
+        document.getElementById('guruActiveClass').textContent = `Kelas: ${cur.kelas}`;
+        document.getElementById('guruActiveTopic').textContent = `Materi: ${cur.materi}`;
+        document.getElementById('btnRecallVoice').disabled = false;
+        document.getElementById('btnSimpanPanggil').innerHTML = `
+          <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+          <span>Simpan & Panggil Berikutnya</span>
+        `;
+      } else {
+        document.getElementById('guruActiveBadge').textContent = '#--';
+        document.getElementById('guruActiveName').textContent = 'Belum ada siswa aktif';
+        document.getElementById('guruActiveClass').textContent = 'Kelas: --';
+        document.getElementById('guruActiveTopic').textContent = 'Materi: --';
+        document.getElementById('btnRecallVoice').disabled = true;
+        document.getElementById('btnSimpanPanggil').innerHTML = `
+          <i data-lucide="play" class="w-5 h-5"></i>
+          <span>Panggil Siswa Pertama</span>
+        `;
+      }
+
+      renderMonitorWaitingList();
+      renderRekapTable();
+      lucide.createIcons();
+    }
+
+    // ==========================================
+    // 14. TIMERS & LIVE CLOCKS
+    // ==========================================
+    function updateClockAndTimers() {
+      const now = new Date();
+      const clockElem = document.getElementById('monitorLiveClock');
+      const dateElem = document.getElementById('monitorLiveDate');
+      if (clockElem) {
+        clockElem.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+      }
+      if (dateElem) {
+        dateElem.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+      }
+
+      if (appState.currentStudent && appState.currentStudent.started_at) {
+        const diff = Math.max(0, Math.floor((Date.now() - appState.currentStudent.started_at) / 1000));
+        const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+        const secs = String(diff % 60).padStart(2, '0');
+        const timerText = `${mins}:${secs}`;
+        
+        const monTimer = document.getElementById('monitorTimer');
+        const guruTimer = document.getElementById('guruActiveDuration');
+        if (monTimer) monTimer.textContent = timerText;
+        if (guruTimer) guruTimer.textContent = timerText;
+      } else {
+        const monTimer = document.getElementById('monitorTimer');
+        const guruTimer = document.getElementById('guruActiveDuration');
+        if (monTimer) monTimer.textContent = '00:00';
+        if (guruTimer) guruTimer.textContent = '00:00';
+      }
+    }
+    setInterval(updateClockAndTimers, 1000);
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn(`Fullscreen error: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ==========================================
+    // 15. INITIAL BOOTSTRAP & REALTIME POLLING
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      switchTab('tab-siswa');
+      updateClockAndTimers();
+      syncDatabase();
+
+      // Real-time synchronization every 1.5 seconds across all connected devices!
+      setInterval(syncDatabase, 1500);
+
+      // Pre-warm speech voices
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+      }
+    });
+  </script>
+</body>
+</html>
