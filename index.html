@@ -528,7 +528,7 @@
             </div>
           </div>
 
-          <!-- Section 2: DAFTAR ANTRIAN MENUNGGU (PANEL GURU) -->
+          <!-- Section 2: DAFTAR SISWA MENUNGGU DIPANGGIL (PANEL GURU) -->
           <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800">
               <div class="flex items-center gap-2.5">
@@ -536,8 +536,8 @@
                   <i data-lucide="users" class="w-5 h-5"></i>
                 </div>
                 <div>
-                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Daftar Antrian Menunggu Giliran</h3>
-                  <p class="text-xs text-slate-500 dark:text-slate-400" id="guruWaitingSub">0 siswa dalam antrian</p>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Daftar Siswa Menunggu Dipanggil</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400" id="guruWaitingSub">0 siswa terdaftar & menunggu giliran</p>
                 </div>
               </div>
 
@@ -550,9 +550,25 @@
               </button>
             </div>
 
-            <!-- List Antrian Menunggu di Panel Guru -->
-            <div id="guruWaitingList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[420px] overflow-y-auto pr-1">
-              <!-- Populated dynamically via JS -->
+            <!-- Tabel Daftar Siswa Menunggu -->
+            <div class="overflow-x-auto rounded-2xl border border-slate-200/70 dark:border-slate-800">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr class="bg-slate-100/75 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/70 dark:border-slate-800">
+                    <th class="py-3 px-4 whitespace-nowrap">No</th>
+                    <th class="py-3 px-4 whitespace-nowrap">No. Antrian</th>
+                    <th class="py-3 px-4 whitespace-nowrap">Nama Siswa</th>
+                    <th class="py-3 px-4 whitespace-nowrap">Kelas</th>
+                    <th class="py-3 px-4 whitespace-nowrap">Materi Praktik</th>
+                    <th class="py-3 px-4 whitespace-nowrap">Waktu Daftar</th>
+                    <th class="py-3 px-4 whitespace-nowrap">Urutan / Status</th>
+                    <th class="py-3 px-4 whitespace-nowrap text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="guruWaitingTableBody" class="divide-y divide-slate-200/60 dark:divide-slate-800/80">
+                  <!-- Populated dynamically via JS -->
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -1708,6 +1724,44 @@
       await callStudentToSlot(emptyIdx + 1);
     }
 
+    async function callWaitingStudentDirect(studentId, code, nama) {
+      const emptyIdx = appState.slots.indexOf(null);
+      if (emptyIdx === -1) {
+        showToast('Semua 6 meja ujian sedang penuh! Selesaikan atau lewati salah satu meja terlebih dahulu.', 'warning');
+        return;
+      }
+      const slotNum = emptyIdx + 1;
+      try {
+        const nowTs = Date.now();
+        await db.collection('students').doc(studentId).update({
+          status: 'in_progress',
+          slot: slotNum,
+          started_at: nowTs
+        });
+        await db.collection('system').doc('call_event').set({
+          code: code,
+          nama: nama,
+          slot: slotNum,
+          timestamp: nowTs
+        });
+        showToast(`Memanggil ${code} ke Meja ${slotNum}`, 'success');
+        announceStudentVoice(code, nama, slotNum);
+      } catch (err) {
+        showToast('Gagal memanggil siswa: ' + err.message, 'error');
+      }
+    }
+
+    async function deleteWaitingStudent(id, code, nama) {
+      if (confirm(`Hapus antrian ${code} (${nama})?`)) {
+        try {
+          await db.collection('students').doc(id).delete();
+          showToast(`Antrian ${code} berhasil dihapus!`, 'info');
+        } catch (err) {
+          showToast('Gagal menghapus antrian: ' + err.message, 'error');
+        }
+      }
+    }
+
     async function fillAllEmptySlots() {
       const emptyIndices = [];
       appState.slots.forEach((s, idx) => {
@@ -2101,62 +2155,67 @@
     }
 
     function renderGuruWaitingList() {
-      const container = document.getElementById('guruWaitingList');
+      const tbody = document.getElementById('guruWaitingTableBody');
       const subLabel = document.getElementById('guruWaitingSub');
-      if (!container) return;
+      if (!tbody) return;
 
       if (subLabel) {
-        subLabel.textContent = `${appState.queue.length} siswa dalam antrian`;
+        subLabel.textContent = `${appState.queue.length} siswa terdaftar & menunggu giliran`;
       }
 
       if (appState.queue.length === 0) {
-        container.innerHTML = `
-          <div class="col-span-full py-10 text-center text-slate-400">
-            <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            <p class="text-sm font-semibold">Tidak ada antrian menunggu saat ini</p>
-            <p class="text-xs text-slate-500 mt-0.5">Siswa baru yang mendaftar akan otomatis muncul di sini</p>
-          </div>
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="py-12 text-center text-slate-400">
+              <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+              <p class="text-sm font-semibold">Tidak ada antrian menunggu saat ini</p>
+              <p class="text-xs text-slate-500 mt-0.5">Siswa yang mendaftar melalui formulir pendaftaran akan otomatis muncul di tabel ini</p>
+            </td>
+          </tr>
         `;
         return;
       }
 
-      container.innerHTML = appState.queue.map((student, idx) => {
+      tbody.innerHTML = appState.queue.map((student, idx) => {
         const isNext = idx === 0;
-        const badgeHighlight = isNext
-          ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm animate-pulse">
-               <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+        const badgeUrutan = isNext
+          ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 animate-pulse">
+               <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                Siap Maju
              </span>`
-          : `<span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          : `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                Giliran ke-${idx + 1}
              </span>`;
 
-        const borderCard = isNext
-          ? 'border-2 border-emerald-400 dark:border-emerald-500/50 bg-emerald-50/70 dark:bg-emerald-950/20 shadow-sm'
-          : 'border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm';
-
         return `
-          <div class="p-3.5 rounded-2xl ${borderCard} flex items-center justify-between gap-3 transition-all hover:scale-[1.01]">
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="flex-shrink-0 min-w-[68px] px-2.5 py-1.5 rounded-xl bg-gradient-to-br from-indigo-500/15 via-purple-500/15 to-blue-500/15 border border-indigo-500/30 text-center flex flex-col items-center justify-center">
-                <span class="text-[8px] uppercase font-bold tracking-widest text-indigo-600 dark:text-indigo-400 leading-none mb-0.5">Antrian</span>
-                <span class="font-black font-mono text-base sm:text-lg text-brand-purple dark:text-purple-300 leading-none">${escapeHtml(student.code)}</span>
+          <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+            <td class="py-3 px-4 font-bold text-slate-400 text-xs">${idx + 1}</td>
+            <td class="py-3 px-4 whitespace-nowrap">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-50 dark:bg-indigo-950/80 text-brand-purple dark:text-purple-300 border border-indigo-200 dark:border-indigo-800 font-mono">
+                ${student.code}
+              </span>
+            </td>
+            <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white whitespace-nowrap">${escapeHtml(student.nama)}</td>
+            <td class="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">${escapeHtml(student.kelas)}</td>
+            <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(student.materi)}</td>
+            <td class="py-3 px-4 font-mono text-xs text-slate-500 whitespace-nowrap">${student.registeredAt || '-'}</td>
+            <td class="py-3 px-4 whitespace-nowrap">${badgeUrutan}</td>
+            <td class="py-3 px-4 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5 justify-end">
+                <button type="button" onclick="callWaitingStudentDirect('${student.id}', '${escapeHtml(student.code)}', '${escapeHtml(student.nama)}')"
+                  title="Panggil siswa ini ke meja kosong pertama"
+                  class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-1 shadow-sm active:scale-95">
+                  <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                  <span>Panggil</span>
+                </button>
+                <button type="button" onclick="deleteWaitingStudent('${student.id}', '${escapeHtml(student.code)}', '${escapeHtml(student.nama)}')"
+                  title="Hapus / Batalkan tiket antrian ini"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
               </div>
-              <div class="min-w-0">
-                <div class="font-bold text-sm text-slate-900 dark:text-white leading-snug truncate">
-                  ${escapeHtml(student.nama)}
-                </div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-1.5 truncate">
-                  <span class="font-semibold text-brand-blue dark:text-blue-400">${escapeHtml(student.kelas)}</span>
-                  <span>&bull;</span>
-                  <span class="truncate">${escapeHtml(student.materi)}</span>
-                </div>
-              </div>
-            </div>
-            <div class="flex-shrink-0">
-              ${badgeHighlight}
-            </div>
-          </div>
+            </td>
+          </tr>
         `;
       }).join('');
     }
