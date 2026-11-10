@@ -35,6 +35,14 @@ rules_version = '2';
 //   - title: string (1-100 chars) - Topic / module title
 //   - createdAt: int | timestamp (immutable) - Creation timestamp
 //
+// Collection: teachers
+// Document ID: auto-generated or username
+// Fields:
+//   - username: string (1-50 chars) - Teacher username
+//   - passwordHash: string (1-128 chars) - Hashed password
+//   - createdAt: int | timestamp - Account creation timestamp
+//   - updatedAt: int | timestamp (optional) - Last update timestamp
+//
 // Collection: system
 // Document IDs:
 //   - counter:
@@ -170,6 +178,16 @@ service cloud.firestore {
              validString(data.passwordHash, 1, 128);
     }
 
+    // Validator for teacher accounts
+    function isValidTeacher(data) {
+      return hasRequiredFields(data, ['username', 'passwordHash']) &&
+             hasOnlyAllowedFields(data, ['username', 'passwordHash', 'createdAt', 'updatedAt']) &&
+             validString(data.username, 1, 50) &&
+             validString(data.passwordHash, 1, 128) &&
+             validOptionalTimestamp(data, 'createdAt') &&
+             validOptionalTimestamp(data, 'updatedAt');
+    }
+
     // ===============================================================
     // Collection Security Rules
     // ===============================================================
@@ -214,7 +232,14 @@ service cloud.firestore {
       allow delete: if true;
     }
 
-    // 4. System Documents Collection
+    // 4. Teachers Collection
+    match /teachers/{teacherId} {
+      allow read: if true;
+      allow create, update: if isValidTeacher(request.resource.data);
+      allow delete: if true;
+    }
+
+    // 5. System Documents Collection
     match /system/{docId} {
       // Allow reading system documents (counter, call_event, admin)
       allow read: if docId in ['counter', 'call_event', 'admin'];

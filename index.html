@@ -817,10 +817,10 @@
   </div>
 
   <!-- ======================================================== -->
-  <!-- MODAL 3: PENGATURAN AKUN GURU (Ubah Username & Password) -->
+  <!-- MODAL 3: PENGATURAN AKUN GURU (Daftar & Tambah Akun Guru) -->
   <!-- ======================================================== -->
   <div id="modalAccountSettings" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
-    <div class="w-full max-w-md glass-card bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 relative transform transition-transform scale-95 duration-300" id="modalAccountCard">
+    <div class="w-full max-w-lg glass-card bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 relative transform transition-transform scale-95 duration-300 max-h-[90vh] overflow-y-auto" id="modalAccountCard">
       
       <button onclick="closeAccountModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
         <i data-lucide="x" class="w-5 h-5"></i>
@@ -828,39 +828,87 @@
 
       <div class="mb-5 flex items-center gap-3">
         <div class="p-2.5 rounded-xl bg-purple-500/10 text-brand-purple">
-          <i data-lucide="settings" class="w-5 h-5"></i>
+          <i data-lucide="users" class="w-5 h-5"></i>
         </div>
         <div>
-          <h3 class="text-lg font-bold text-slate-900 dark:text-white">Pengaturan Akun Guru</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Perbarui username & password admin Anda</p>
+          <h3 class="text-lg font-bold text-slate-900 dark:text-white">Manajemen Akun Guru</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Kelola akun dan tambahkan guru pembimbing lain</p>
         </div>
       </div>
 
-      <form onsubmit="handleAccountUpdate(event)" class="space-y-4">
+      <!-- Tab Switch: 1. Daftar & Tambah Guru, 2. Ganti Password Saya -->
+      <div class="flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 mb-5">
+        <button type="button" onclick="switchAccountModalTab('tab-acc-list')" id="btnTabAccList" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all bg-white dark:bg-slate-900 text-brand-purple dark:text-purple-300 shadow-sm">
+          Daftar & Tambah Guru
+        </button>
+        <button type="button" onclick="switchAccountModalTab('tab-acc-change-pwd')" id="btnTabAccPwd" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400">
+          Ubah Password Saya
+        </button>
+      </div>
+
+      <!-- Subview 1: Daftar Guru & Form Tambah Guru Baru -->
+      <div id="accViewList" class="space-y-5">
+        <!-- Daftar Guru Terdaftar -->
         <div>
-          <label for="accNewUsername" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Username Baru</label>
-          <input type="text" id="accNewUsername" required class="glass-input w-full px-4 py-3 rounded-xl text-sm outline-none">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Guru Terdaftar:</span>
+            <span id="teacherCountBadge" class="text-xs font-semibold text-purple-600 dark:text-purple-400">1 Akun</span>
+          </div>
+          <div id="teacherListContainer" class="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+            <!-- Injected via JS -->
+          </div>
         </div>
 
-        <div>
-          <label for="accNewPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
-          <input type="password" id="accNewPassword" required minlength="4" class="glass-input w-full px-4 py-3 rounded-xl text-sm outline-none">
+        <!-- Form Tambah Akun Guru Baru -->
+        <div class="pt-4 border-t border-slate-200/80 dark:border-slate-800">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+            <i data-lucide="user-plus" class="w-4 h-4 text-emerald-500"></i>
+            <span>Tambah Akun Guru Baru</span>
+          </h4>
+          <form onsubmit="handleAddNewTeacher(event)" class="space-y-3">
+            <div>
+              <label for="newTeacherUsername" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Username Guru Baru *</label>
+              <input type="text" id="newTeacherUsername" required placeholder="Contoh: bu_ani atau pak_budi" class="glass-input w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="newTeacherPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password *</label>
+                <input type="password" id="newTeacherPassword" required minlength="4" placeholder="Min. 4 karakter" class="glass-input w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none">
+              </div>
+              <div>
+                <label for="newTeacherConfirmPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Ulangi Password *</label>
+                <input type="password" id="newTeacherConfirmPassword" required minlength="4" placeholder="Konfirmasi password" class="glass-input w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none">
+              </div>
+            </div>
+            <button type="submit" id="btnSubmitNewTeacher" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2">
+              <i data-lucide="user-plus" class="w-4 h-4"></i>
+              <span>+ Tambahkan Akun Guru</span>
+            </button>
+          </form>
         </div>
+      </div>
 
-        <div>
-          <label for="accConfirmPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Konfirmasi Password Baru</label>
-          <input type="password" id="accConfirmPassword" required minlength="4" class="glass-input w-full px-4 py-3 rounded-xl text-sm outline-none">
+      <!-- Subview 2: Ganti Password Akun Saya -->
+      <div id="accViewChangePwd" class="space-y-4 hidden">
+        <div class="p-3.5 rounded-2xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700 text-xs">
+          Login saat ini sebagai: <strong id="accActiveUserLabel" class="font-bold text-brand-purple dark:text-purple-300">kien</strong>
         </div>
-
-        <div class="pt-2 flex gap-3">
-          <button type="button" onclick="closeAccountModal()" class="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-            Batal
-          </button>
-          <button type="submit" class="flex-1 py-3 rounded-xl font-bold text-white bg-brand-purple hover:bg-purple-700 text-xs shadow-md transition-all">
-            Simpan Perubahan
-          </button>
-        </div>
-      </form>
+        <form onsubmit="handleAccountUpdate(event)" class="space-y-3">
+          <div>
+            <label for="accNewPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password Baru *</label>
+            <input type="password" id="accNewPassword" required minlength="4" placeholder="Min. 4 karakter" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm outline-none">
+          </div>
+          <div>
+            <label for="accConfirmPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Konfirmasi Password Baru *</label>
+            <input type="password" id="accConfirmPassword" required minlength="4" placeholder="Ulangi password baru" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm outline-none">
+          </div>
+          <div class="pt-2">
+            <button type="submit" class="w-full py-3 rounded-xl font-bold text-white bg-brand-purple hover:bg-purple-700 text-xs sm:text-sm shadow-md transition-all active:scale-95">
+              Simpan Password Baru
+            </button>
+          </div>
+        </form>
+      </div>
 
     </div>
   </div>
@@ -926,6 +974,8 @@
 
     let appState = {
       credentials: { username: 'kien', passwordHash: '' },
+      teachers: [],
+      currentTeacher: sessionStorage.getItem('antrian_admin_username') || 'kien',
       classes: [],
       topics: [],
       queue: [],
@@ -937,7 +987,8 @@
       lastCallTimestamp: 0,
       isInitialLoaded: false,
       classesSeeded: false,
-      topicsSeeded: false
+      topicsSeeded: false,
+      teachersSeeded: false
     };
 
     // Helper: SHA-256 Web Crypto API
@@ -1104,7 +1155,32 @@
         console.warn('Call event listener err:', err);
       });
 
-      // 5. Listen to Admin Settings
+      // 5. Listen to Teachers Collection (Multi-account support)
+      db.collection('teachers').orderBy('createdAt', 'asc').onSnapshot(async snapshot => {
+        if (snapshot.empty && !appState.teachersSeeded) {
+          appState.teachersSeeded = true;
+          try {
+            const adminDoc = await db.collection('system').doc('admin').get();
+            const defaultHash = await hashPassword('123!@#');
+            const initialU = (adminDoc.exists && adminDoc.data().username) || 'kien';
+            const initialH = (adminDoc.exists && adminDoc.data().passwordHash) || defaultHash;
+            await db.collection('teachers').add({
+              username: initialU,
+              passwordHash: initialH,
+              createdAt: Date.now()
+            });
+          } catch (err) {
+            console.warn('Teacher seed err:', err);
+          }
+        } else {
+          appState.teachers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderTeacherAccountsList();
+        }
+      }, err => {
+        console.warn('Teachers listener err:', err);
+      });
+
+      // 6. Listen to Admin Settings (Fallback for legacy single-account)
       db.collection('system').doc('admin').onSnapshot(async doc => {
         if (!doc.exists) {
           const defaultHash = await hashPassword('123!@#');
@@ -1118,8 +1194,8 @@
           appState.credentials = doc.data();
         }
         const userLabel = document.getElementById('guruCurrentUsernameLabel');
-        if (userLabel && appState.credentials.username) {
-          userLabel.textContent = appState.credentials.username;
+        if (userLabel) {
+          userLabel.textContent = appState.currentTeacher || appState.credentials.username || 'kien';
         }
       }, err => {
         console.warn('Admin listener err:', err);
@@ -1244,12 +1320,24 @@
       const targetUser = (appState.credentials && appState.credentials.username) ? appState.credentials.username : 'kien';
       const targetHash = appState.credentials ? appState.credentials.passwordHash : '';
 
-      if (u === targetUser && (hashed === targetHash || (!targetHash && p === '123!@#'))) {
+      // Check teachers collection first, fallback to legacy credentials
+      const teacher = appState.teachers.find(t => t.username.toLowerCase() === u.toLowerCase());
+      const isMatch = (teacher && teacher.passwordHash === hashed) ||
+                      (!teacher && u === targetUser && (hashed === targetHash || (!targetHash && p === '123!@#')));
+
+      if (isMatch) {
+        const loggedUser = teacher ? teacher.username : u;
         appState.isLoggedIn = true;
+        appState.currentTeacher = loggedUser;
         sessionStorage.setItem(STORAGE_KEYS.AUTH_USER, 'true');
+        sessionStorage.setItem('antrian_admin_username', loggedUser);
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
         closeLoginModal();
         renderAuthHeader();
-        showToast('Login berhasil! Selamat datang di Panel Guru.', 'success');
+        const userLabel = document.getElementById('guruCurrentUsernameLabel');
+        if (userLabel) userLabel.textContent = loggedUser;
+        showToast(`Login berhasil! Selamat datang, ${loggedUser}.`, 'success');
         switchTab('tab-guru');
       } else {
         showToast('Username atau password salah!', 'error');
@@ -1258,21 +1346,107 @@
 
     function handleLogout() {
       appState.isLoggedIn = false;
+      appState.currentTeacher = 'kien';
       sessionStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+      sessionStorage.removeItem('antrian_admin_username');
       renderAuthHeader();
       showToast('Anda telah keluar dari Panel Guru.', 'info');
       switchTab('tab-siswa');
     }
 
     // ==========================================
-    // 7. PENGATURAN AKUN GURU (Firebase Firestore)
+    // 7. PENGATURAN AKUN GURU (MULTI-ACCOUNT GURU)
     // ==========================================
+    function switchAccountModalTab(tab) {
+      const isList = tab === 'tab-acc-list';
+      const viewList = document.getElementById('accViewList');
+      const viewPwd = document.getElementById('accViewChangePwd');
+      const btnList = document.getElementById('btnTabAccList');
+      const btnPwd = document.getElementById('btnTabAccPwd');
+
+      if (viewList) viewList.classList.toggle('hidden', !isList);
+      if (viewPwd) viewPwd.classList.toggle('hidden', isList);
+
+      if (btnList && btnPwd) {
+        if (isList) {
+          btnList.className = 'flex-1 py-2 text-xs font-bold rounded-lg transition-all bg-white dark:bg-slate-900 text-brand-purple dark:text-purple-300 shadow-sm';
+          btnPwd.className = 'flex-1 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400';
+        } else {
+          btnList.className = 'flex-1 py-2 text-xs font-semibold rounded-lg transition-all text-slate-600 dark:text-slate-400';
+          btnPwd.className = 'flex-1 py-2 text-xs font-bold rounded-lg transition-all bg-white dark:bg-slate-900 text-brand-purple dark:text-purple-300 shadow-sm';
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function renderTeacherAccountsList() {
+      const container = document.getElementById('teacherListContainer');
+      const badge = document.getElementById('teacherCountBadge');
+      if (!container) return;
+
+      if (badge) badge.textContent = `${appState.teachers.length} Akun`;
+
+      if (appState.teachers.length === 0) {
+        container.innerHTML = `
+          <div class="p-3 text-center text-xs text-slate-400">
+            Belum ada akun guru di database
+          </div>
+        `;
+        return;
+      }
+
+      const activeUser = (appState.currentTeacher || 'kien').toLowerCase();
+
+      container.innerHTML = appState.teachers.map(t => {
+        const isSelf = t.username.toLowerCase() === activeUser;
+        const canDelete = !isSelf && appState.teachers.length > 1;
+
+        return `
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 text-xs">
+            <div class="flex items-center gap-2 truncate mr-2">
+              <span class="p-1 rounded-lg bg-purple-500/10 text-brand-purple">
+                <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+              </span>
+              <span class="font-bold text-slate-900 dark:text-white truncate">${escapeHtml(t.username)}</span>
+              ${isSelf ? '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Anda (Aktif)</span>' : ''}
+            </div>
+            <div>
+              ${canDelete ? `
+                <button type="button" onclick="handleDeleteTeacher('${t.id}', '${escapeHtml(t.username)}')"
+                  title="Hapus akun guru ini"
+                  class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
     function openAccountModal() {
       const modal = document.getElementById('modalAccountSettings');
       const card = document.getElementById('modalAccountCard');
-      document.getElementById('accNewUsername').value = appState.credentials.username || 'kien';
-      document.getElementById('accNewPassword').value = '';
-      document.getElementById('accConfirmPassword').value = '';
+      const activeUser = appState.currentTeacher || 'kien';
+
+      const label = document.getElementById('accActiveUserLabel');
+      if (label) label.textContent = activeUser;
+
+      const uInput = document.getElementById('newTeacherUsername');
+      const pInput = document.getElementById('newTeacherPassword');
+      const cInput = document.getElementById('newTeacherConfirmPassword');
+      const npInput = document.getElementById('accNewPassword');
+      const cpInput = document.getElementById('accConfirmPassword');
+
+      if (uInput) uInput.value = '';
+      if (pInput) pInput.value = '';
+      if (cInput) cInput.value = '';
+      if (npInput) npInput.value = '';
+      if (cpInput) cpInput.value = '';
+
+      switchAccountModalTab('tab-acc-list');
+      renderTeacherAccountsList();
 
       modal.classList.remove('hidden');
       setTimeout(() => {
@@ -1290,14 +1464,66 @@
       setTimeout(() => modal.classList.add('hidden'), 300);
     }
 
+    async function handleAddNewTeacher(e) {
+      e.preventDefault();
+      const u = document.getElementById('newTeacherUsername').value.trim();
+      const p = document.getElementById('newTeacherPassword').value;
+      const conf = document.getElementById('newTeacherConfirmPassword').value;
+
+      if (!u) {
+        showToast('Username guru tidak boleh kosong!', 'error');
+        return;
+      }
+      if (p.length < 4) {
+        showToast('Password minimal 4 karakter!', 'error');
+        return;
+      }
+      if (p !== conf) {
+        showToast('Konfirmasi password tidak cocok!', 'error');
+        return;
+      }
+
+      const exists = appState.teachers.some(t => t.username.toLowerCase() === u.toLowerCase());
+      if (exists) {
+        showToast(`Username '${u}' sudah terdaftar! Gunakan username lain.`, 'error');
+        return;
+      }
+
+      try {
+        const hashed = await hashPassword(p);
+        await db.collection('teachers').add({
+          username: u,
+          passwordHash: hashed,
+          createdAt: Date.now()
+        });
+
+        document.getElementById('newTeacherUsername').value = '';
+        document.getElementById('newTeacherPassword').value = '';
+        document.getElementById('newTeacherConfirmPassword').value = '';
+        showToast(`Akun guru '${u}' berhasil ditambahkan!`, 'success');
+      } catch (err) {
+        showToast('Gagal menambahkan akun guru: ' + err.message, 'error');
+      }
+    }
+
+    async function handleDeleteTeacher(id, username) {
+      if (confirm(`Hapus akun guru '${username}'? Akun ini tidak akan dapat login lagi.`)) {
+        try {
+          await db.collection('teachers').doc(id).delete();
+          showToast(`Akun guru '${username}' berhasil dihapus!`, 'info');
+        } catch (err) {
+          showToast('Gagal menghapus akun: ' + err.message, 'error');
+        }
+      }
+    }
+
     async function handleAccountUpdate(e) {
       e.preventDefault();
-      const newU = document.getElementById('accNewUsername').value.trim();
       const newP = document.getElementById('accNewPassword').value;
       const confP = document.getElementById('accConfirmPassword').value;
 
-      if (!newU) {
-        showToast('Username tidak boleh kosong!', 'error');
+      if (newP.length < 4) {
+        showToast('Password minimal 4 karakter!', 'error');
         return;
       }
       if (newP !== confP) {
@@ -1306,18 +1532,36 @@
       }
 
       try {
+        const activeU = appState.currentTeacher || 'kien';
         const hashed = await hashPassword(newP);
+
+        const teacherDoc = appState.teachers.find(t => t.username.toLowerCase() === activeU.toLowerCase());
+        if (teacherDoc) {
+          await db.collection('teachers').doc(teacherDoc.id).update({
+            passwordHash: hashed,
+            updatedAt: Date.now()
+          });
+        } else {
+          await db.collection('teachers').add({
+            username: activeU,
+            passwordHash: hashed,
+            createdAt: Date.now()
+          });
+        }
+
+        // Also update system/admin for compatibility
         await db.collection('system').doc('admin').set({
-          username: newU,
+          username: activeU,
           passwordHash: hashed,
           updatedAt: Date.now()
         }, { merge: true });
-        appState.credentials = { username: newU, passwordHash: hashed };
-        document.getElementById('guruCurrentUsernameLabel').textContent = newU;
+
+        document.getElementById('accNewPassword').value = '';
+        document.getElementById('accConfirmPassword').value = '';
         closeAccountModal();
-        showToast('Kredensial akun guru berhasil disimpan!', 'success');
+        showToast('Password berhasil diperbarui!', 'success');
       } catch (err) {
-        showToast('Gagal memperbarui akun: ' + err.message, 'error');
+        showToast('Gagal memperbarui password: ' + err.message, 'error');
       }
     }
 
