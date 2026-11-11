@@ -289,6 +289,29 @@
                 </p>
               </div>
 
+              <!-- 4. Guru Penguji / Pembimbing (Dinamis dari Akun Guru Terdaftar) -->
+              <div>
+                <label for="regGuru" class="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Guru Penguji / Pembimbing <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="user-check" class="w-5 h-5"></i>
+                  </span>
+                  <select id="regGuru" required onchange="handleRegGuruChange()"
+                    class="glass-input w-full pl-11 pr-10 py-3.5 rounded-2xl text-sm sm:text-base outline-none transition-all appearance-none cursor-pointer">
+                    <!-- Populated dynamically -->
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                  </span>
+                </div>
+                <p id="regGuruEmptyNotice" class="text-xs text-amber-500 dark:text-amber-400 mt-1.5 hidden flex items-center gap-1">
+                  <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                  Belum ada guru terdaftar.
+                </p>
+              </div>
+
               <!-- Tombol Submit Ambil Antrian -->
               <button type="submit" id="btnSubmitDaftar"
                 class="w-full mt-2 py-4 px-6 rounded-2xl font-bold text-white bg-gradient-to-r from-brand-blue via-brand-indigo to-brand-purple hover:opacity-95 active:scale-[0.99] transition-all shadow-lg shadow-indigo-500/35 flex items-center justify-center gap-2 text-base">
@@ -380,6 +403,16 @@
               </div>
             </div>
             <div class="flex items-center gap-3">
+              <!-- Filter Guru untuk Layar Monitor -->
+              <div class="relative min-w-[170px]">
+                <select id="monitorTeacherSelect" onchange="handleMonitorTeacherChange(this.value)"
+                  class="glass-input w-full pl-3 pr-8 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 outline-none appearance-none cursor-pointer border border-purple-300 dark:border-purple-800 bg-white/80 dark:bg-slate-800/80">
+                  <option value="all">Semua Guru</option>
+                </select>
+                <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                </span>
+              </div>
               <!-- Digital Clock -->
               <div class="text-right">
                 <div id="monitorLiveClock" class="font-mono text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">00:00:00</div>
@@ -500,7 +533,9 @@
                   <i data-lucide="award" class="w-5 h-5"></i>
                 </div>
                 <div>
-                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Kontrol Antrian 6 Slot Meja Penilaian</h3>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">
+                    Kontrol Antrian 6 Slot Meja Penilaian &bull; <span id="guruSlotOwnerBadge" class="text-brand-purple dark:text-purple-400">Guru: kien</span>
+                  </h3>
                   <p class="text-xs text-slate-500 dark:text-slate-400">Nilai hingga 6 siswa sekaligus secara independen di masing-masing meja</p>
                 </div>
               </div>
@@ -536,7 +571,9 @@
                   <i data-lucide="users" class="w-5 h-5"></i>
                 </div>
                 <div>
-                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Daftar Siswa Menunggu Dipanggil</h3>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">
+                    Daftar Siswa Menunggu Dipanggil &bull; <span id="guruWaitingOwnerBadge" class="text-brand-purple dark:text-purple-400">Guru: kien</span>
+                  </h3>
                   <p class="text-xs text-slate-500 dark:text-slate-400" id="guruWaitingSub">0 siswa terdaftar & menunggu giliran</p>
                 </div>
               </div>
@@ -669,7 +706,9 @@
                   <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
                 </div>
                 <div>
-                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">Rekap Nilai Siswa Praktik</h3>
+                  <h3 class="text-lg font-bold text-slate-900 dark:text-white">
+                    Rekap Nilai Siswa Praktik &bull; <span id="guruRekapOwnerBadge" class="text-emerald-600 dark:text-emerald-400">Guru: kien</span>
+                  </h3>
                   <p class="text-xs text-slate-500 dark:text-slate-400" id="rekapCountLabel">0 siswa selesai dinilai</p>
                 </div>
               </div>
@@ -703,6 +742,7 @@
                     <th class="py-3.5 px-4 whitespace-nowrap">Nama Siswa</th>
                     <th class="py-3.5 px-4 whitespace-nowrap">Kelas</th>
                     <th class="py-3.5 px-4 whitespace-nowrap">Materi</th>
+                    <th class="py-3.5 px-4 whitespace-nowrap">Guru Penguji</th>
                     <th class="py-3.5 px-4 whitespace-nowrap">Nilai</th>
                     <th class="py-3.5 px-4 whitespace-nowrap">Status</th>
                     <th class="py-3.5 px-4 whitespace-nowrap min-w-[160px]">Catatan</th>
@@ -802,6 +842,7 @@
         <div><strong class="text-slate-500 dark:text-slate-400">Nama:</strong> <span id="modalTicketName" class="font-bold text-slate-900 dark:text-white">-</span></div>
         <div><strong class="text-slate-500 dark:text-slate-400">Kelas:</strong> <span id="modalTicketClass" class="text-slate-700 dark:text-slate-200">-</span></div>
         <div><strong class="text-slate-500 dark:text-slate-400">Materi:</strong> <span id="modalTicketTopic" class="text-slate-700 dark:text-slate-200">-</span></div>
+        <div><strong class="text-slate-500 dark:text-slate-400">Guru:</strong> <span id="modalTicketGuru" class="font-bold text-brand-purple dark:text-purple-300">-</span></div>
       </div>
 
       <div class="flex gap-2">
@@ -978,6 +1019,8 @@
       currentTeacher: sessionStorage.getItem('antrian_admin_username') || 'kien',
       classes: [],
       topics: [],
+      allStudents: [],
+      selectedMonitorTeacher: 'all',
       queue: [],
       slots: [null, null, null, null, null, null],
       currentStudent: null,
@@ -1108,30 +1151,8 @@
       // 3. Listen to Students (Queue + Active 6 Slots + Graded History)
       db.collection('students').orderBy('num', 'asc').onSnapshot(snapshot => {
         const students = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        appState.queue = students.filter(s => s.status === 'waiting');
-
-        const inProgress = students.filter(s => s.status === 'in_progress');
-        const slots = [null, null, null, null, null, null];
-        inProgress.forEach(s => {
-          if (s.slot >= 1 && s.slot <= 6 && !slots[s.slot - 1]) {
-            slots[s.slot - 1] = s;
-          }
-        });
-        inProgress.forEach(s => {
-          if (slots.indexOf(s) === -1) {
-            const emptyIdx = slots.indexOf(null);
-            if (emptyIdx !== -1) {
-              slots[emptyIdx] = s;
-            }
-          }
-        });
-        appState.slots = slots;
-        appState.currentStudent = slots.find(s => s !== null) || null;
-
-        appState.history = students
-          .filter(s => s.status === 'completed' || s.status === 'skipped')
-          .sort((a, b) => (b.completedTimestamp || 0) - (a.completedTimestamp || 0));
-        
+        appState.allStudents = students;
+        updateTeacherScopedState();
         renderAllViews();
         appState.isInitialLoaded = true;
       }, err => {
@@ -1147,7 +1168,7 @@
               appState.lastCallTimestamp = data.timestamp;
             } else if (data.timestamp > appState.lastCallTimestamp) {
               appState.lastCallTimestamp = data.timestamp;
-              announceStudentVoice(data.code, data.nama, data.slot);
+              announceStudentVoice(data.code, data.nama, data.slot, data.guru);
             }
           }
         }
@@ -1175,6 +1196,7 @@
         } else {
           appState.teachers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
           renderTeacherAccountsList();
+          renderTeacherOptions();
         }
       }, err => {
         console.warn('Teachers listener err:', err);
@@ -1200,6 +1222,38 @@
       }, err => {
         console.warn('Admin listener err:', err);
       });
+    }
+
+    function updateTeacherScopedState() {
+      const activeGuru = (appState.currentTeacher || 'kien').toLowerCase();
+      const all = appState.allStudents || [];
+
+      // Filter students who chose current logged-in teacher (fallback to 'kien' for legacy data)
+      const teacherStudents = all.filter(s => (s.guru || 'kien').toLowerCase() === activeGuru);
+
+      appState.queue = teacherStudents.filter(s => s.status === 'waiting');
+
+      const inProgress = teacherStudents.filter(s => s.status === 'in_progress');
+      const slots = [null, null, null, null, null, null];
+      inProgress.forEach(s => {
+        if (s.slot >= 1 && s.slot <= 6 && !slots[s.slot - 1]) {
+          slots[s.slot - 1] = s;
+        }
+      });
+      inProgress.forEach(s => {
+        if (slots.indexOf(s) === -1) {
+          const emptyIdx = slots.indexOf(null);
+          if (emptyIdx !== -1) {
+            slots[emptyIdx] = s;
+          }
+        }
+      });
+      appState.slots = slots;
+      appState.currentStudent = slots.find(s => s !== null) || null;
+
+      appState.history = teacherStudents
+        .filter(s => s.status === 'completed' || s.status === 'skipped')
+        .sort((a, b) => (b.completedTimestamp || 0) - (a.completedTimestamp || 0));
     }
 
     async function seedDefaultClasses() {
@@ -1337,6 +1391,8 @@
         renderAuthHeader();
         const userLabel = document.getElementById('guruCurrentUsernameLabel');
         if (userLabel) userLabel.textContent = loggedUser;
+        updateTeacherScopedState();
+        renderAllViews();
         showToast(`Login berhasil! Selamat datang, ${loggedUser}.`, 'success');
         switchTab('tab-guru');
       } else {
@@ -1350,6 +1406,8 @@
       sessionStorage.removeItem(STORAGE_KEYS.AUTH_USER);
       sessionStorage.removeItem('antrian_admin_username');
       renderAuthHeader();
+      updateTeacherScopedState();
+      renderAllViews();
       showToast('Anda telah keluar dari Panel Guru.', 'info');
       switchTab('tab-siswa');
     }
@@ -1639,6 +1697,48 @@
       }
     }
 
+    function renderTeacherOptions() {
+      const selectGuru = document.getElementById('regGuru');
+      const emptyGuruNotice = document.getElementById('regGuruEmptyNotice');
+      const monitorTeacherSelect = document.getElementById('monitorTeacherSelect');
+
+      const teacherUsernames = (appState.teachers && appState.teachers.length > 0)
+        ? appState.teachers.map(t => t.username)
+        : ['kien'];
+
+      if (selectGuru) {
+        const curVal = selectGuru.value;
+        if (teacherUsernames.length === 0) {
+          selectGuru.innerHTML = `<option value="">-- Belum ada guru terdaftar --</option>`;
+          if (emptyGuruNotice) emptyGuruNotice.classList.remove('hidden');
+        } else {
+          if (emptyGuruNotice) emptyGuruNotice.classList.add('hidden');
+          selectGuru.innerHTML = `<option value="">-- Pilih Guru Penguji / Pembimbing --</option>` +
+            teacherUsernames.map(u => `<option value="${escapeHtml(u)}" ${u === curVal ? 'selected' : ''}>Guru: ${escapeHtml(u)}</option>`).join('');
+
+          if (!curVal && teacherUsernames.length === 1) {
+            selectGuru.value = teacherUsernames[0];
+          }
+        }
+      }
+
+      if (monitorTeacherSelect) {
+        const curMon = appState.selectedMonitorTeacher || monitorTeacherSelect.value || 'all';
+        monitorTeacherSelect.innerHTML = `<option value="all" ${curMon === 'all' ? 'selected' : ''}>Semua Guru</option>` +
+          teacherUsernames.map(u => `<option value="${escapeHtml(u)}" ${u === curMon ? 'selected' : ''}>Guru: ${escapeHtml(u)}</option>`).join('');
+      }
+    }
+
+    function handleRegGuruChange() {
+      renderMiniSlots();
+    }
+
+    function handleMonitorTeacherChange(val) {
+      appState.selectedMonitorTeacher = val;
+      renderMonitorSlots();
+      renderMonitorWaitingList();
+    }
+
     async function handleAddKelas(e) {
       e.preventDefault();
       const val = document.getElementById('inputNewKelas').value.trim();
@@ -1770,18 +1870,28 @@
     }
 
     function openClearAntrianModal() {
+      const activeGuru = appState.currentTeacher || 'kien';
       openConfirmModal(
-        'Clear Seluruh Antrian?',
-        'Tindakan ini akan mereset antrian menunggu dan siswa yang sedang aktif. Riwayat nilai siswa yang sudah selesai tetap tersimpan.',
+        `Clear Antrian Guru ${activeGuru}?`,
+        `Tindakan ini akan mereset antrian menunggu dan siswa yang sedang aktif khusus untuk Guru ${activeGuru}. Riwayat nilai siswa yang sudah selesai tetap tersimpan.`,
         async () => {
           try {
             const snapshot = await db.collection('students')
               .where('status', 'in', ['waiting', 'in_progress'])
               .get();
             const batch = db.batch();
-            snapshot.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-            showToast('Antrian aktif berhasil dibersihkan!', 'info');
+            let count = 0;
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              if ((data.guru || 'kien').toLowerCase() === activeGuru.toLowerCase()) {
+                batch.delete(doc.ref);
+                count++;
+              }
+            });
+            if (count > 0) {
+              await batch.commit();
+            }
+            showToast(`Antrian aktif Guru ${activeGuru} berhasil dibersihkan!`, 'info');
           } catch (e) {
             showToast('Gagal membersihkan antrian: ' + e.message, 'error');
           }
@@ -1790,22 +1900,32 @@
     }
 
     function openClearRekapModal() {
+      const activeGuru = appState.currentTeacher || 'kien';
       if (appState.history.length === 0) {
         showToast('Tabel rekap nilai sudah kosong!', 'info');
         return;
       }
       openConfirmModal(
-        'Clear Semua Rekap Nilai?',
-        'Tindakan ini akan menghapus permanen seluruh riwayat nilai siswa yang sudah selesai di database. Data yang dihapus tidak dapat dipulihkan.',
+        `Clear Semua Rekap Nilai Guru ${activeGuru}?`,
+        `Tindakan ini akan menghapus permanen seluruh riwayat nilai siswa yang diuji oleh Guru ${activeGuru} di database. Data guru lain tidak akan terhapus.`,
         async () => {
           try {
             const snapshot = await db.collection('students')
               .where('status', 'in', ['completed', 'skipped'])
               .get();
             const batch = db.batch();
-            snapshot.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-            showToast('Semua riwayat rekap nilai berhasil dibersihkan!', 'info');
+            let count = 0;
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              if ((data.guru || 'kien').toLowerCase() === activeGuru.toLowerCase()) {
+                batch.delete(doc.ref);
+                count++;
+              }
+            });
+            if (count > 0) {
+              await batch.commit();
+            }
+            showToast(`Semua riwayat rekap nilai Guru ${activeGuru} berhasil dibersihkan!`, 'info');
           } catch (e) {
             showToast('Gagal membersihkan rekap nilai: ' + e.message, 'error');
           }
@@ -1821,10 +1941,11 @@
       const nama = document.getElementById('regNama').value.trim();
       const kelas = document.getElementById('regKelas').value;
       const materi = document.getElementById('regMateri').value;
+      const guru = document.getElementById('regGuru').value;
       const submitBtn = document.getElementById('btnSubmitDaftar');
 
-      if (!nama || !kelas || !materi) {
-        showToast('Mohon lengkapi semua isian formulir!', 'error');
+      if (!nama || !kelas || !materi || !guru) {
+        showToast('Mohon lengkapi semua isian formulir termasuk memilih Guru!', 'error');
         return;
       }
 
@@ -1853,6 +1974,7 @@
             nama: nama,
             kelas: kelas,
             materi: materi,
+            guru: guru,
             status: 'waiting',
             nilai: null,
             kelulusan: null,
@@ -1864,7 +1986,7 @@
             completedTimestamp: null
           });
 
-          newStudent = { num: nextNum, code, nama, kelas, materi };
+          newStudent = { num: nextNum, code, nama, kelas, materi, guru };
         });
 
         document.getElementById('studentRegisterForm').reset();
@@ -1874,6 +1996,7 @@
         document.getElementById('modalTicketName').textContent = newStudent.nama;
         document.getElementById('modalTicketClass').textContent = newStudent.kelas;
         document.getElementById('modalTicketTopic').textContent = newStudent.materi;
+        document.getElementById('modalTicketGuru').textContent = newStudent.guru;
 
         const modal = document.getElementById('modalTicketConfirmation');
         const card = document.getElementById('modalTicketCard');
@@ -1907,15 +2030,20 @@
     }
 
     // ==========================================
-    // 10. WEB SPEECH SYNTHESIS (TTS SUARA PANGGILAN 5 SLOT)
+    // 10. WEB SPEECH SYNTHESIS (TTS SUARA PANGGILAN 6 SLOT)
     // ==========================================
-    function announceStudentVoice(code, nama, slot) {
+    function announceStudentVoice(code, nama, slot, guru) {
       if (!('speechSynthesis' in window)) return;
 
       window.speechSynthesis.cancel();
 
       const cleanCode = code.replace('#', '').replace('-', ' ');
-      const destination = slot ? `, silakan maju ke Meja ${slot}` : ', silakan maju';
+      let destination = ', silakan maju';
+      if (slot && guru) {
+        destination = `, silakan maju ke Meja ${slot} Guru ${guru}`;
+      } else if (slot) {
+        destination = `, silakan maju ke Meja ${slot}`;
+      }
       const speechText = `Panggilan antrian nomor ${cleanCode}, atas nama ${nama}${destination}.`;
 
       const utterance = new SpeechSynthesisUtterance(speechText);
@@ -1931,7 +2059,7 @@
     }
 
     // ==========================================
-    // 11. KONTROL ANTRIAN & PENILAIAN (5 SLOT MEJA INDEPENDEN)
+    // 11. KONTROL ANTRIAN & PENILAIAN (6 SLOT MEJA INDEPENDEN)
     // ==========================================
     async function callStudentToSlot(slotNum) {
       const nextStudent = appState.queue[0];
@@ -1941,6 +2069,7 @@
       }
       try {
         const nowTs = Date.now();
+        const activeGuru = appState.currentTeacher || 'kien';
         await db.collection('students').doc(nextStudent.id).update({
           status: 'in_progress',
           slot: slotNum,
@@ -1950,10 +2079,11 @@
           code: nextStudent.code,
           nama: nextStudent.nama,
           slot: slotNum,
+          guru: activeGuru,
           timestamp: nowTs
         });
         showToast(`Memanggil ${nextStudent.code} ke Meja ${slotNum}`, 'success');
-        announceStudentVoice(nextStudent.code, nextStudent.nama, slotNum);
+        announceStudentVoice(nextStudent.code, nextStudent.nama, slotNum, activeGuru);
       } catch (err) {
         showToast('Gagal memanggil antrian: ' + err.message, 'error');
       }
@@ -1977,6 +2107,7 @@
       const slotNum = emptyIdx + 1;
       try {
         const nowTs = Date.now();
+        const activeGuru = appState.currentTeacher || 'kien';
         await db.collection('students').doc(studentId).update({
           status: 'in_progress',
           slot: slotNum,
@@ -1986,10 +2117,11 @@
           code: code,
           nama: nama,
           slot: slotNum,
+          guru: activeGuru,
           timestamp: nowTs
         });
         showToast(`Memanggil ${code} ke Meja ${slotNum}`, 'success');
-        announceStudentVoice(code, nama, slotNum);
+        announceStudentVoice(code, nama, slotNum, activeGuru);
       } catch (err) {
         showToast('Gagal memanggil siswa: ' + err.message, 'error');
       }
@@ -2042,14 +2174,16 @@
         await batch.commit();
         if (called.length > 0) {
           const last = called[called.length - 1];
+          const activeGuru = appState.currentTeacher || 'kien';
           await db.collection('system').doc('call_event').set({
             code: last.student.code,
             nama: last.student.nama,
             slot: last.slotNum,
+            guru: activeGuru,
             timestamp: nowTs
           });
           showToast(`Berhasil memanggil ${called.length} siswa ke meja praktik!`, 'success');
-          announceStudentVoice(called[0].student.code, called[0].student.nama, called[0].slotNum);
+          announceStudentVoice(called[0].student.code, called[0].student.nama, called[0].slotNum, activeGuru);
         }
       } catch (err) {
         showToast('Gagal memanggil siswa: ' + err.message, 'error');
@@ -2063,14 +2197,16 @@
         return;
       }
       try {
+        const activeGuru = student.guru || appState.currentTeacher || 'kien';
         await db.collection('system').doc('call_event').set({
           code: student.code,
           nama: student.nama,
           slot: slotNum,
+          guru: activeGuru,
           timestamp: Date.now()
         });
         showToast(`Panggilan ulang Meja ${slotNum} dikirim!`, 'info');
-        announceStudentVoice(student.code, student.nama, slotNum);
+        announceStudentVoice(student.code, student.nama, slotNum, activeGuru);
       } catch (err) {
         showToast('Gagal memanggil ulang: ' + err.message, 'error');
       }
@@ -2108,6 +2244,7 @@
 
         const nextStudent = appState.queue[0];
         if (nextStudent) {
+          const activeGuru = appState.currentTeacher || 'kien';
           await db.collection('students').doc(nextStudent.id).update({
             status: 'in_progress',
             slot: slotNum,
@@ -2117,9 +2254,10 @@
             code: nextStudent.code,
             nama: nextStudent.nama,
             slot: slotNum,
+            guru: activeGuru,
             timestamp: nowTs
           });
-          announceStudentVoice(nextStudent.code, nextStudent.nama, slotNum);
+          announceStudentVoice(nextStudent.code, nextStudent.nama, slotNum, activeGuru);
         } else {
           showToast(`Meja ${slotNum} sekarang kosong (antrian selesai).`, 'info');
         }
@@ -2180,6 +2318,7 @@
 
         const nextStudent = appState.queue[0];
         if (nextStudent) {
+          const activeGuru = appState.currentTeacher || 'kien';
           await db.collection('students').doc(nextStudent.id).update({
             status: 'in_progress',
             slot: slotNum,
@@ -2189,9 +2328,10 @@
             code: nextStudent.code,
             nama: nextStudent.nama,
             slot: slotNum,
+            guru: activeGuru,
             timestamp: nowTs
           });
-          announceStudentVoice(nextStudent.code, nextStudent.nama, slotNum);
+          announceStudentVoice(nextStudent.code, nextStudent.nama, slotNum, activeGuru);
         }
       } catch (err) {
         showToast('Gagal melewati siswa: ' + err.message, 'error');
@@ -2234,6 +2374,7 @@
             <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(r.nama)}</td>
             <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(r.kelas)}</td>
             <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(r.materi)}</td>
+            <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(r.guru || appState.currentTeacher || 'kien')}</td>
             <td style="text-align: center; font-weight: bold; border: 1px solid #d1d5db; padding: 6px;">${nilaiStr}</td>
             <td style="text-align: center; font-weight: bold; border: 1px solid #d1d5db; padding: 6px; color: ${statusColor};">${statusStr}</td>
             <td style="border: 1px solid #d1d5db; padding: 6px;">${escapeHtml(catatanStr)}</td>
@@ -2253,7 +2394,7 @@
         </head>
         <body>
           <h2 style="font-family: Arial, sans-serif; color: #1e1b4b;">REKAPITULASI NILAI UJIAN PRAKTIK SISWA</h2>
-          <p style="font-family: Arial, sans-serif; font-size: 12px; color: #64748b;">Tanggal Export: ${exportDate}</p>
+          <p style="font-family: Arial, sans-serif; font-size: 12px; color: #64748b;">Tanggal Export: ${exportDate} &bull; Guru Penguji: ${escapeHtml(appState.currentTeacher || 'kien')}</p>
           <table style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px;" border="1">
             <thead>
               <tr>
@@ -2262,6 +2403,7 @@
                 <th>Nama Siswa</th>
                 <th>Kelas</th>
                 <th>Materi</th>
+                <th>Guru Penguji</th>
                 <th>Nilai</th>
                 <th>Status</th>
                 <th>Catatan</th>
@@ -2280,7 +2422,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Rekap_Nilai_${new Date().toISOString().slice(0, 10)}.xls`;
+      a.download = `Rekap_Nilai_${appState.currentTeacher || 'Guru'}_${new Date().toISOString().slice(0, 10)}.xls`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -2297,8 +2439,8 @@
       if (appState.history.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="10" class="py-8 text-center text-slate-400 italic">
-              Belum ada siswa yang selesai dinilai di database.
+            <td colspan="11" class="py-8 text-center text-slate-400 italic">
+              Belum ada siswa yang selesai dinilai di database untuk guru ini.
             </td>
           </tr>
         `;
@@ -2318,6 +2460,7 @@
             <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">${escapeHtml(row.nama)}</td>
             <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(row.kelas)}</td>
             <td class="py-3 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(row.materi)}</td>
+            <td class="py-3 px-4 font-semibold text-brand-purple dark:text-purple-400">${escapeHtml(row.guru || appState.currentTeacher || 'kien')}</td>
             <td class="py-3 px-4 font-black text-sm text-slate-900 dark:text-white">${(row.nilai !== null && row.nilai !== undefined) ? row.nilai : '-'}</td>
             <td class="py-3 px-4">
               <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${badgeClass}">
@@ -2339,9 +2482,25 @@
 
     function renderMonitorWaitingList() {
       const container = document.getElementById('monitorWaitingList');
-      document.getElementById('monitorWaitingSub').textContent = `${appState.queue.length} siswa dalam antrian`;
+      if (!container) return;
 
-      if (appState.queue.length === 0) {
+      const isAll = !appState.selectedMonitorTeacher || appState.selectedMonitorTeacher === 'all';
+      const targetGuru = isAll ? null : appState.selectedMonitorTeacher.toLowerCase();
+
+      const waitingList = (appState.allStudents || []).filter(s => {
+        if (s.status !== 'waiting') return false;
+        if (!isAll) return (s.guru || 'kien').toLowerCase() === targetGuru;
+        return true;
+      });
+
+      const subLabel = document.getElementById('monitorWaitingSub');
+      if (subLabel) {
+        subLabel.textContent = isAll
+          ? `${waitingList.length} siswa dalam antrian (Semua Guru)`
+          : `${waitingList.length} siswa dalam antrian (Guru: ${appState.selectedMonitorTeacher})`;
+      }
+
+      if (waitingList.length === 0) {
         container.innerHTML = `
           <div class="py-12 text-center text-slate-400">
             <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
@@ -2353,7 +2512,7 @@
         return;
       }
 
-      container.innerHTML = appState.queue.map((student, idx) => {
+      container.innerHTML = waitingList.map((student, idx) => {
         const isNext = idx === 0;
 
         const badgeHighlight = isNext
@@ -2385,6 +2544,8 @@
                   <span class="font-semibold text-brand-blue dark:text-blue-400">${escapeHtml(student.kelas)}</span>
                   <span>&bull;</span>
                   <span class="truncate">${escapeHtml(student.materi)}</span>
+                  <span>&bull;</span>
+                  <span class="font-bold text-brand-purple dark:text-purple-300">Guru: ${escapeHtml(student.guru || 'kien')}</span>
                 </div>
               </div>
             </div>
@@ -2403,8 +2564,9 @@
       const subLabel = document.getElementById('guruWaitingSub');
       if (!tbody) return;
 
+      const activeGuru = appState.currentTeacher || 'kien';
       if (subLabel) {
-        subLabel.textContent = `${appState.queue.length} siswa terdaftar & menunggu giliran`;
+        subLabel.textContent = `${appState.queue.length} siswa terdaftar & menunggu giliran untuk Guru ${activeGuru}`;
       }
 
       if (appState.queue.length === 0) {
@@ -2412,8 +2574,8 @@
           <tr>
             <td colspan="8" class="py-12 text-center text-slate-400">
               <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-              <p class="text-sm font-semibold">Tidak ada antrian menunggu saat ini</p>
-              <p class="text-xs text-slate-500 mt-0.5">Siswa yang mendaftar melalui formulir pendaftaran akan otomatis muncul di tabel ini</p>
+              <p class="text-sm font-semibold">Tidak ada antrian menunggu saat ini untuk Guru ${escapeHtml(activeGuru)}</p>
+              <p class="text-xs text-slate-500 mt-0.5">Siswa yang mendaftar dan memilih Guru ${escapeHtml(activeGuru)} akan otomatis muncul di tabel ini</p>
             </td>
           </tr>
         `;
@@ -2469,13 +2631,30 @@
       const badge = document.getElementById('activeBadgeLiveMini');
       if (!container) return;
 
-      const activeCount = appState.slots.filter(s => s !== null).length;
+      const regGuruSelect = document.getElementById('regGuru');
+      const targetGuru = (regGuruSelect && regGuruSelect.value) ? regGuruSelect.value.toLowerCase() : (appState.currentTeacher || 'kien').toLowerCase();
+
+      const inProgress = (appState.allStudents || []).filter(s => s.status === 'in_progress' && (s.guru || 'kien').toLowerCase() === targetGuru);
+      const miniSlots = [null, null, null, null, null, null];
+      inProgress.forEach(s => {
+        if (s.slot >= 1 && s.slot <= 6 && !miniSlots[s.slot - 1]) {
+          miniSlots[s.slot - 1] = s;
+        }
+      });
+      inProgress.forEach(s => {
+        if (miniSlots.indexOf(s) === -1) {
+          const emptyIdx = miniSlots.indexOf(null);
+          if (emptyIdx !== -1) miniSlots[emptyIdx] = s;
+        }
+      });
+
+      const activeCount = miniSlots.filter(s => s !== null).length;
       if (badge) badge.textContent = `${activeCount} / 6 Slot Terisi`;
 
       let out = '';
       for (let i = 0; i < 6; i++) {
         const slotNum = i + 1;
-        const student = appState.slots[i];
+        const student = miniSlots[i];
         if (student) {
           out += `
             <div class="flex items-center justify-between p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
@@ -2484,7 +2663,7 @@
                 <span class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(student.code)}</span>
                 <span class="truncate text-slate-600 dark:text-slate-400 font-medium">${escapeHtml(student.nama)}</span>
               </div>
-              <span class="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold" id="miniTimer-${slotNum}">00:00</span>
+              <span class="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold" data-started-time="${student.started_at || 0}">00:00</span>
             </div>
           `;
         } else {
@@ -2504,14 +2683,76 @@
       const countLabel = document.getElementById('monitorActiveCountLabel');
       if (!grid) return;
 
-      const activeCount = appState.slots.filter(s => s !== null).length;
-      if (countLabel) countLabel.textContent = `${activeCount} / 6 Slot Terisi`;
+      const isAll = !appState.selectedMonitorTeacher || appState.selectedMonitorTeacher === 'all';
+      const targetGuru = isAll ? null : appState.selectedMonitorTeacher.toLowerCase();
+
+      const inProgress = (appState.allStudents || []).filter(s => {
+        if (s.status !== 'in_progress') return false;
+        if (!isAll) return (s.guru || 'kien').toLowerCase() === targetGuru;
+        return true;
+      });
+
+      let displayCards = [];
+
+      if (!isAll) {
+        // 6 Slots for the selected teacher
+        const slots = [null, null, null, null, null, null];
+        inProgress.forEach(s => {
+          if (s.slot >= 1 && s.slot <= 6 && !slots[s.slot - 1]) {
+            slots[s.slot - 1] = s;
+          }
+        });
+        inProgress.forEach(s => {
+          if (slots.indexOf(s) === -1) {
+            const emptyIdx = slots.indexOf(null);
+            if (emptyIdx !== -1) slots[emptyIdx] = s;
+          }
+        });
+
+        const activeCount = slots.filter(s => s !== null).length;
+        if (countLabel) countLabel.textContent = `${activeCount} / 6 Slot Terisi`;
+
+        for (let i = 0; i < 6; i++) {
+          const slotNum = i + 1;
+          const student = slots[i];
+          if (student) {
+            displayCards.push({
+              slotNum: slotNum,
+              student: student,
+              teacherLabel: student.guru || appState.selectedMonitorTeacher
+            });
+          } else {
+            displayCards.push({ slotNum: slotNum, student: null, teacherLabel: null });
+          }
+        }
+      } else {
+        // All teachers
+        if (countLabel) countLabel.textContent = `${inProgress.length} Siswa Sedang Praktik`;
+
+        inProgress.forEach((s) => {
+          displayCards.push({
+            slotNum: s.slot || 1,
+            student: s,
+            teacherLabel: s.guru || 'kien'
+          });
+        });
+
+        // Fill up to 6 cards minimum if less than 6
+        const padCount = Math.max(0, 6 - displayCards.length);
+        for (let i = 0; i < padCount; i++) {
+          displayCards.push({ slotNum: displayCards.length + 1, student: null, teacherLabel: null });
+        }
+      }
 
       let out = '';
-      for (let i = 0; i < 6; i++) {
-        const slotNum = i + 1;
-        const student = appState.slots[i];
+      displayCards.forEach((item) => {
+        const slotNum = item.slotNum;
+        const student = item.student;
         if (student) {
+          const teacherBadge = item.teacherLabel 
+            ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/25">Guru: ${escapeHtml(item.teacherLabel)}</span>`
+            : '';
+
           out += `
             <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between border-2 border-indigo-400/50 dark:border-indigo-500/40 bg-gradient-to-br from-indigo-500/10 via-white to-purple-500/10 dark:from-indigo-950/40 dark:via-slate-900/60 dark:to-purple-950/30 shadow-lg relative overflow-hidden">
               <div class="flex items-center justify-between mb-3">
@@ -2522,10 +2763,13 @@
                   </span>
                   Meja ${slotNum}
                 </span>
-                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                  <i data-lucide="clock" class="w-3 h-3"></i>
-                  <span id="monitorTimer-${slotNum}">00:00</span>
-                </span>
+                <div class="flex items-center gap-1.5">
+                  ${teacherBadge}
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <i data-lucide="clock" class="w-3 h-3"></i>
+                    <span data-started-time="${student.started_at || 0}">00:00</span>
+                  </span>
+                </div>
               </div>
 
               <div class="my-2">
@@ -2571,7 +2815,8 @@
             </div>
           `;
         }
-      }
+      });
+
       grid.innerHTML = out;
     }
 
@@ -2595,7 +2840,7 @@
                   <div class="flex items-center gap-2">
                     <span class="font-mono text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
                       <i data-lucide="timer" class="w-3.5 h-3.5 text-indigo-500"></i>
-                      <span id="guruTimer-${slotNum}">00:00</span>
+                      <span data-started-time="${student.started_at || 0}">00:00</span>
                     </span>
                     <button type="button" onclick="recallSlotStudent(${slotNum})"
                       title="Panggil Ulang Suara Meja ${slotNum}"
@@ -2686,10 +2931,22 @@
 
     function renderAllViews() {
       renderClassAndTopicOptions();
+      renderTeacherOptions();
       renderAuthHeader();
 
-      const countWaiting = appState.queue.length;
-      const countCompleted = appState.history.length;
+      const activeTeacher = appState.currentTeacher || 'kien';
+      const userLabel = document.getElementById('guruCurrentUsernameLabel');
+      if (userLabel) userLabel.textContent = activeTeacher;
+
+      const slotOwner = document.getElementById('guruSlotOwnerBadge');
+      if (slotOwner) slotOwner.textContent = `Guru: ${activeTeacher}`;
+      const waitingOwner = document.getElementById('guruWaitingOwnerBadge');
+      if (waitingOwner) waitingOwner.textContent = `Guru: ${activeTeacher}`;
+      const rekapOwner = document.getElementById('guruRekapOwnerBadge');
+      if (rekapOwner) rekapOwner.textContent = `Guru: ${activeTeacher}`;
+
+      const countWaiting = (appState.allStudents || []).filter(s => s.status === 'waiting').length;
+      const countCompleted = (appState.allStudents || []).filter(s => s.status === 'completed' || s.status === 'skipped').length;
       document.getElementById('statWaitingSiswa').textContent = countWaiting;
       document.getElementById('statCompletedSiswa').textContent = countCompleted;
 
@@ -2716,23 +2973,17 @@
         dateElem.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
       }
 
-      for (let i = 0; i < 6; i++) {
-        const slotNum = i + 1;
-        const student = appState.slots[i];
-        let timerText = '00:00';
-        if (student && student.started_at) {
-          const diff = Math.max(0, Math.floor((Date.now() - student.started_at) / 1000));
+      document.querySelectorAll('[data-started-time]').forEach(el => {
+        const started = parseInt(el.getAttribute('data-started-time'), 10);
+        if (started && started > 0) {
+          const diff = Math.max(0, Math.floor((Date.now() - started) / 1000));
           const mins = String(Math.floor(diff / 60)).padStart(2, '0');
           const secs = String(diff % 60).padStart(2, '0');
-          timerText = `${mins}:${secs}`;
+          el.textContent = `${mins}:${secs}`;
+        } else {
+          el.textContent = '00:00';
         }
-        const mTimer = document.getElementById(`monitorTimer-${slotNum}`);
-        const gTimer = document.getElementById(`guruTimer-${slotNum}`);
-        const miniTimer = document.getElementById(`miniTimer-${slotNum}`);
-        if (mTimer) mTimer.textContent = timerText;
-        if (gTimer) gTimer.textContent = timerText;
-        if (miniTimer) miniTimer.textContent = timerText;
-      }
+      });
     }
     setInterval(updateClockAndTimers, 1000);
 
